@@ -3,19 +3,19 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
+	"math"
 
 	"github.com/fogleman/rush"
 )
 
 func main() {
 	desc := []string{
-		"....CE",
-		"..BBCE",
-		"..AADE",
-		"..H.D.",
-		"..HGFF",
-		"..HG..",
+		"BBBCDE",
+		"FGGCDE",
+		"F.AADE",
+		"HHI...",
+		".JI.KK",
+		".JLLMM",
 	}
 	board, err := rush.NewBoard(desc)
 	if err != nil {
@@ -24,15 +24,27 @@ func main() {
 	fmt.Println(board)
 	fmt.Println()
 
-	var moves []rush.Move
-	for i := 0; i < 3000000; i++ {
-		moves = board.Moves(moves)
-		move := moves[rand.Intn(len(moves))]
+	// var moves []rush.Move
+	// for i := 0; i < 10; i++ {
+	// 	moves = board.Moves(moves)
+	// 	move := moves[rand.Intn(len(moves))]
+	// 	board.DoMove(move)
+	// 	fmt.Println(len(moves), moves)
+	// 	fmt.Println(move)
+	// 	fmt.Println()
+	// 	fmt.Println(board)
+	// 	fmt.Println()
+	// }
+
+	moves := board.Solve(16)
+	fmt.Println(moves)
+	sum := 0
+	for _, move := range moves {
 		board.DoMove(move)
-		// fmt.Println(len(moves), moves)
-		// fmt.Println(move)
-		// fmt.Println()
-		// fmt.Println(board)
-		// fmt.Println()
+		fmt.Println(move)
+		fmt.Println(board)
+		fmt.Println()
+		sum += int(math.Abs(float64(move.Steps)))
 	}
+	fmt.Println(sum)
 }

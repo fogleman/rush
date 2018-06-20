@@ -20,9 +20,8 @@ type Piece struct {
 }
 
 type Board struct {
-	Width  int
-	Height int
-	// Target int
+	Width    int
+	Height   int
 	Pieces   []Piece
 	Occupied []bool
 }
@@ -103,7 +102,7 @@ func (board *Board) String() string {
 		grid[i] = "."
 	}
 	for i, piece := range board.Pieces {
-		label := string('0' + i)
+		label := string('A' + i)
 		stride := 1
 		if piece.Direction == Vertical {
 			stride = w
@@ -175,4 +174,21 @@ func (board *Board) DoMove(move Move) {
 		board.Occupied[idx] = true
 		idx += stride
 	}
+}
+
+func (board *Board) UndoMove(move Move) {
+	board.DoMove(Move{move.Piece, -move.Steps})
+}
+
+func (board *Board) MemoKey() MemoKey {
+	var key MemoKey
+	for i, piece := range board.Pieces {
+		key[i] = piece.Position
+	}
+	return key
+}
+
+func (board *Board) Solve(target int) []Move {
+	solver := NewSolver(board, target)
+	return solver.Solve()
 }
