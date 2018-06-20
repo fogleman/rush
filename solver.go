@@ -1,7 +1,5 @@
 package rush
 
-import "fmt"
-
 type Solver struct {
 	Board  *Board
 	Target int
@@ -50,7 +48,6 @@ func (solver *Solver) Solve() []Move {
 		return nil
 	}
 	for i := 1; ; i++ {
-		fmt.Println(i)
 		solver.path = make([]Move, i)
 		solver.moves = make([][]Move, i)
 		if solver.search(0, i) {

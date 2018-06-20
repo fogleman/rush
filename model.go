@@ -31,6 +31,13 @@ type Move struct {
 	Steps int
 }
 
+func (move Move) AbsSteps() int {
+	if move.Steps < 0 {
+		return -move.Steps
+	}
+	return move.Steps
+}
+
 func NewBoard(desc []string) (*Board, error) {
 	// determine board size
 	h := len(desc)
