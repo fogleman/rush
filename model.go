@@ -3,6 +3,7 @@ package rush
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 type Direction int
@@ -22,8 +23,13 @@ type Board struct {
 	Width  int
 	Height int
 	// Target int
-	Pieces   []Piece
+	Pieces   []*Piece
 	Occupied []bool
+}
+
+type Move struct {
+	Piece int
+	Steps int
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -42,49 +48,131 @@ func NewBoard(desc []string) (*Board, error) {
 	positions := make(map[string][]int)
 	for y, row := range desc {
 		for x, value := range row {
-			c := string(value)
-			if c == "." {
+			label := string(value)
+			if label == "." {
 				continue
 			}
 			i := y*w + x
 			occupied[i] = true
-			positions[c] = append(positions[c], i)
+			positions[label] = append(positions[label], i)
 		}
 	}
 	if len(positions) < 1 {
 		return nil, fmt.Errorf("board must have at least one piece")
 	}
 
-	// find distinct piece labels
-	keys := make([]string, 0, len(positions))
-	for k := range positions {
-		keys = append(keys, k)
+	// find and sort distinct piece labels
+	labels := make([]string, 0, len(positions))
+	for label := range positions {
+		labels = append(labels, label)
 	}
-	sort.Strings(keys)
+	sort.Strings(labels)
 
 	// validate and create pieces
-	pieces := make([]Piece, 0, len(keys))
-	for _, k := range keys {
-		ps := positions[k]
+	pieces := make([]*Piece, 0, len(labels))
+	for _, label := range labels {
+		ps := positions[label]
 		if len(ps) < 2 {
-			return nil, fmt.Errorf("piece %s length must be >= 2", k)
+			return nil, fmt.Errorf("piece %s length must be >= 2", label)
 		}
 		stride := ps[1] - ps[0]
 		if stride != 1 && stride != w {
-			return nil, fmt.Errorf("piece %s has invalid shape", k)
+			return nil, fmt.Errorf("piece %s has invalid shape", label)
 		}
-		for i := 1; i < len(ps); i++ {
+		for i := 2; i < len(ps); i++ {
 			if ps[i]-ps[i-1] != stride {
-				return nil, fmt.Errorf("piece %s has invalid shape", k)
+				return nil, fmt.Errorf("piece %s has invalid shape", label)
 			}
 		}
 		dir := Horizontal
 		if stride != 1 {
 			dir = Vertical
 		}
-		pieces = append(pieces, Piece{ps[0], len(ps), dir})
+		pieces = append(pieces, &Piece{ps[0], len(ps), dir})
 	}
 
 	// create board
 	return &Board{w, h, pieces, occupied}, nil
+}
+
+func (board *Board) String() string {
+	w := board.Width
+	h := board.Height
+	grid := make([]string, w*h)
+	for i := range grid {
+		grid[i] = "."
+	}
+	for i, piece := range board.Pieces {
+		label := string('0' + i)
+		stride := 1
+		if piece.Direction == Vertical {
+			stride = w
+		}
+		for j := 0; j < piece.Size; j++ {
+			grid[piece.Position+stride*j] = label
+		}
+	}
+	rows := make([]string, h)
+	for y := 0; y < h; y++ {
+		rows[y] = strings.Join(grid[y*w:y*w+w], "")
+	}
+	return strings.Join(rows, "\n")
+}
+
+func (board *Board) Moves() []Move {
+	var moves []Move
+	w := board.Width
+	h := board.Height
+	for i, piece := range board.Pieces {
+		var stride, reverseSteps, forwardSteps int
+		if piece.Direction == Vertical {
+			y := piece.Position / w
+			reverseSteps = -y
+			forwardSteps = h - piece.Size - y
+			stride = w
+		} else {
+			x := piece.Position % w
+			reverseSteps = -x
+			forwardSteps = w - piece.Size - x
+			stride = 1
+		}
+		// reverse (negative steps)
+		idx := piece.Position - stride
+		for steps := -1; steps >= reverseSteps; steps-- {
+			if board.Occupied[idx] {
+				break
+			}
+			moves = append(moves, Move{i, steps})
+			idx -= stride
+		}
+		// forward (positive steps)
+		idx = piece.Position + piece.Size*stride
+		for steps := 1; steps <= forwardSteps; steps++ {
+			if board.Occupied[idx] {
+				break
+			}
+			moves = append(moves, Move{i, steps})
+			idx += stride
+		}
+	}
+	return moves
+}
+
+func (board *Board) DoMove(move Move) {
+	piece := board.Pieces[move.Piece]
+	stride := 1
+	if piece.Direction == Vertical {
+		stride = board.Width
+	}
+	idx := piece.Position
+	for i := 0; i < piece.Size; i++ {
+		board.Occupied[idx] = false
+		idx += stride
+	}
+	piece.Position += stride * move.Steps
+	idx = piece.Position
+	for i := 0; i < piece.Size; i++ {
+		board.Occupied[idx] = true
+		idx += stride
+	}
 }
