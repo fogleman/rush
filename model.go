@@ -2,6 +2,7 @@ package rush
 
 import (
 	"fmt"
+	"image"
 	"sort"
 	"strings"
 )
@@ -201,4 +202,8 @@ func (board *Board) MemoKey() MemoKey {
 func (board *Board) Solve(target int) ([]Move, bool) {
 	solver := NewSolver(board, target)
 	return solver.Solve()
+}
+
+func (board *Board) Render() image.Image {
+	return renderBoard(board)
 }
