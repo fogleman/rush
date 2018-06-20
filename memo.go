@@ -13,10 +13,14 @@ func NewMemo() *Memo {
 	return &Memo{data}
 }
 
-func (table *Memo) Add(key MemoKey, depth int) bool {
-	if before, ok := table.data[key]; ok && before >= depth {
+func (memo *Memo) Size() int {
+	return len(memo.data)
+}
+
+func (memo *Memo) Add(key MemoKey, depth int) bool {
+	if before, ok := memo.data[key]; ok && before >= depth {
 		return false
 	}
-	table.data[key] = depth
+	memo.data[key] = depth
 	return true
 }

@@ -64,19 +64,19 @@ func RenderBoard(board *rush.Board) image.Image {
 		y1 := float64(i1 / bw)
 		dx := x1 - x0
 		dy := y1 - y0
-		m := S * 0.125
+		m := S / 8.0
 		px := x0*S + m
 		py := y0*S + m
 		pw := dx*S + S - m*2
 		ph := dy*S + S - m*2
-		dc.DrawRoundedRectangle(px+0.5, py+0.5, pw, ph, S*0.125)
+		dc.DrawRoundedRectangle(px+0.5, py+0.5, pw, ph, S/8.0)
 		if i == 0 {
 			dc.SetHexColor(PrimaryPieceColor)
 		} else {
 			dc.SetHexColor(PieceColor)
 		}
 		dc.FillPreserve()
-		dc.SetLineWidth(S * 0.03125)
+		dc.SetLineWidth(S / 32.0)
 		dc.SetHexColor(PieceOutlineColor)
 		dc.Stroke()
 	}
@@ -99,21 +99,24 @@ func main() {
 	fmt.Println(board)
 	fmt.Println()
 
-	gg.SavePNG(fmt.Sprintf("%04d.png", 0), RenderBoard(board))
+	// gg.SavePNG(fmt.Sprintf("%04d.png", 0), RenderBoard(board))
 
 	start := time.Now()
-	moves := board.Solve(16)
+	moves, ok := board.Solve(16)
+	if !ok {
+		log.Fatal("no solution")
+	}
 	elapsed := time.Since(start)
 
 	fmt.Println(moves)
 	sum := 0
-	for i, move := range moves {
+	for _, move := range moves {
 		board.DoMove(move)
 		fmt.Println(move)
 		fmt.Println(board)
 		fmt.Println()
 		sum += move.AbsSteps()
-		gg.SavePNG(fmt.Sprintf("%04d.png", i+1), RenderBoard(board))
+		// gg.SavePNG(fmt.Sprintf("%04d.png", i+1), RenderBoard(board))
 	}
 	fmt.Println(len(moves))
 	fmt.Println(sum)

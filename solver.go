@@ -43,15 +43,21 @@ func (solver *Solver) search(depth, maxDepth int) bool {
 	return false
 }
 
-func (solver *Solver) Solve() []Move {
+func (solver *Solver) Solve() ([]Move, bool) {
 	if solver.isSolved() {
-		return nil
+		return nil, true
 	}
+	previousMemoSize := 0
 	for i := 1; ; i++ {
 		solver.path = make([]Move, i)
 		solver.moves = make([][]Move, i)
 		if solver.search(0, i) {
-			return solver.path
+			return solver.path, true
 		}
+		memoSize := solver.memo.Size()
+		if memoSize == previousMemoSize {
+			return nil, false
+		}
+		previousMemoSize = memoSize
 	}
 }

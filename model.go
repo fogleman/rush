@@ -66,6 +66,9 @@ func NewBoard(desc []string) (*Board, error) {
 	if len(positions) < 1 {
 		return nil, fmt.Errorf("board must have at least one piece")
 	}
+	if len(positions) > MaxPieces {
+		return nil, fmt.Errorf("board must have <= %d pieces", MaxPieces)
+	}
 
 	// find and sort distinct piece labels
 	labels := make([]string, 0, len(positions))
@@ -195,7 +198,7 @@ func (board *Board) MemoKey() MemoKey {
 	return key
 }
 
-func (board *Board) Solve(target int) []Move {
+func (board *Board) Solve(target int) ([]Move, bool) {
 	solver := NewSolver(board, target)
 	return solver.Solve()
 }
