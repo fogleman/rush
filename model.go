@@ -7,17 +7,24 @@ import (
 	"strings"
 )
 
-type Direction int
+type Orientation int
 
 const (
-	Horizontal Direction = iota
+	Horizontal Orientation = iota
 	Vertical
 )
 
 type Piece struct {
-	Position  int
-	Size      int
-	Direction Direction
+	Position    int
+	Size        int
+	Orientation Orientation
+}
+
+func (piece *Piece) Stride(w int) int {
+	if piece.Orientation == Horizontal {
+		return 1
+	}
+	return w
 }
 
 type Board struct {
@@ -37,6 +44,11 @@ func (move Move) AbsSteps() int {
 		return -move.Steps
 	}
 	return move.Steps
+}
+
+func NewEmptyBoard(w, h int) *Board {
+	occupied := make([]bool, w*h)
+	return &Board{w, h, nil, occupied}
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -114,10 +126,7 @@ func (board *Board) String() string {
 	}
 	for i, piece := range board.Pieces {
 		label := string('A' + i)
-		stride := 1
-		if piece.Direction == Vertical {
-			stride = w
-		}
+		stride := piece.Stride(w)
 		for j := 0; j < piece.Size; j++ {
 			grid[piece.Position+stride*j] = label
 		}
@@ -135,7 +144,7 @@ func (board *Board) Moves(buf []Move) []Move {
 	h := board.Height
 	for i, piece := range board.Pieces {
 		var stride, reverseSteps, forwardSteps int
-		if piece.Direction == Vertical {
+		if piece.Orientation == Vertical {
 			y := piece.Position / w
 			reverseSteps = -y
 			forwardSteps = h - piece.Size - y
@@ -154,6 +163,7 @@ func (board *Board) Moves(buf []Move) []Move {
 			}
 			moves = append(moves, Move{i, steps})
 			idx -= stride
+			// break
 		}
 		// forward (positive steps)
 		idx = piece.Position + piece.Size*stride
@@ -163,6 +173,7 @@ func (board *Board) Moves(buf []Move) []Move {
 			}
 			moves = append(moves, Move{i, steps})
 			idx += stride
+			// break
 		}
 	}
 	return moves
@@ -170,21 +181,10 @@ func (board *Board) Moves(buf []Move) []Move {
 
 func (board *Board) DoMove(move Move) {
 	piece := &board.Pieces[move.Piece]
-	stride := 1
-	if piece.Direction == Vertical {
-		stride = board.Width
-	}
-	idx := piece.Position
-	for i := 0; i < piece.Size; i++ {
-		board.Occupied[idx] = false
-		idx += stride
-	}
+	stride := piece.Stride(board.Width)
+	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, false)
 	piece.Position += stride * move.Steps
-	idx = piece.Position
-	for i := 0; i < piece.Size; i++ {
-		board.Occupied[idx] = true
-		idx += stride
-	}
+	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, true)
 }
 
 func (board *Board) UndoMove(move Move) {

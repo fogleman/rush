@@ -9,6 +9,14 @@ import (
 )
 
 func main() {
+	// desc := []string{
+	// 	"......",
+	// 	"....DD",
+	// 	"..AAB.",
+	// 	"..E.B.",
+	// 	"..ECCC",
+	// 	"......",
+	// }
 	desc := []string{
 		"BBBCDE",
 		"FGGCDE",

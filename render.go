@@ -49,7 +49,7 @@ func renderBoard(board *Board) image.Image {
 	dc.Stroke()
 	for i, piece := range board.Pieces {
 		stride := 1
-		if piece.Direction == Vertical {
+		if piece.Orientation == Vertical {
 			stride = bw
 		}
 		i0 := piece.Position
