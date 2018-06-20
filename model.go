@@ -23,7 +23,7 @@ type Board struct {
 	Width  int
 	Height int
 	// Target int
-	Pieces   []*Piece
+	Pieces   []Piece
 	Occupied []bool
 }
 
@@ -69,7 +69,7 @@ func NewBoard(desc []string) (*Board, error) {
 	sort.Strings(labels)
 
 	// validate and create pieces
-	pieces := make([]*Piece, 0, len(labels))
+	pieces := make([]Piece, 0, len(labels))
 	for _, label := range labels {
 		ps := positions[label]
 		if len(ps) < 2 {
@@ -88,7 +88,7 @@ func NewBoard(desc []string) (*Board, error) {
 		if stride != 1 {
 			dir = Vertical
 		}
-		pieces = append(pieces, &Piece{ps[0], len(ps), dir})
+		pieces = append(pieces, Piece{ps[0], len(ps), dir})
 	}
 
 	// create board
@@ -119,8 +119,8 @@ func (board *Board) String() string {
 	return strings.Join(rows, "\n")
 }
 
-func (board *Board) Moves() []Move {
-	var moves []Move
+func (board *Board) Moves(buf []Move) []Move {
+	moves := buf[:0]
 	w := board.Width
 	h := board.Height
 	for i, piece := range board.Pieces {
@@ -159,7 +159,7 @@ func (board *Board) Moves() []Move {
 }
 
 func (board *Board) DoMove(move Move) {
-	piece := board.Pieces[move.Piece]
+	piece := &board.Pieces[move.Piece]
 	stride := 1
 	if piece.Direction == Vertical {
 		stride = board.Width

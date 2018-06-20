@@ -24,14 +24,15 @@ func main() {
 	fmt.Println(board)
 	fmt.Println()
 
-	for i := 0; i < 10; i++ {
-		moves := board.Moves()
-		fmt.Println(len(moves), moves)
+	var moves []rush.Move
+	for i := 0; i < 3000000; i++ {
+		moves = board.Moves(moves)
 		move := moves[rand.Intn(len(moves))]
 		board.DoMove(move)
-		fmt.Println(move)
-		fmt.Println()
-		fmt.Println(board)
-		fmt.Println()
+		// fmt.Println(len(moves), moves)
+		// fmt.Println(move)
+		// fmt.Println()
+		// fmt.Println(board)
+		// fmt.Println()
 	}
 }
