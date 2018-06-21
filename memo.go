@@ -1,6 +1,6 @@
 package rush
 
-const MaxPieces = 32
+const MaxPieces = 16
 
 type MemoKey [MaxPieces]int
 
@@ -14,18 +14,24 @@ func MakeMemoKey(pieces []Piece) MemoKey {
 
 type Memo struct {
 	data map[MemoKey]int
+	hits uint64
 }
 
 func NewMemo() *Memo {
 	data := make(map[MemoKey]int)
-	return &Memo{data}
+	return &Memo{data, 0}
 }
 
 func (memo *Memo) Size() int {
 	return len(memo.data)
 }
 
+func (memo *Memo) Hits() uint64 {
+	return memo.hits
+}
+
 func (memo *Memo) Add(key *MemoKey, depth int) bool {
+	memo.hits++
 	if before, ok := memo.data[*key]; ok && before >= depth {
 		return false
 	}

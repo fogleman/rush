@@ -27,6 +27,14 @@ func (piece *Piece) Stride(w int) int {
 	return w
 }
 
+func (piece *Piece) Row(w int) int {
+	return piece.Position / w
+}
+
+func (piece *Piece) Col(w int) int {
+	return piece.Position % w
+}
+
 type Board struct {
 	Width    int
 	Height   int
@@ -185,10 +193,21 @@ func (board *Board) Moves(buf []Move) []Move {
 func (board *Board) DoMove(move Move) {
 	piece := &board.Pieces[move.Piece]
 	stride := piece.Stride(board.Width)
-	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, false)
+
+	idx := piece.Position
+	for i := 0; i < piece.Size; i++ {
+		board.Occupied[idx] = false
+		idx += stride
+	}
+
 	piece.Position += stride * move.Steps
 	board.memoKey[move.Piece] = piece.Position
-	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, true)
+
+	idx = piece.Position
+	for i := 0; i < piece.Size; i++ {
+		board.Occupied[idx] = true
+		idx += stride
+	}
 }
 
 func (board *Board) UndoMove(move Move) {
@@ -199,7 +218,7 @@ func (board *Board) MemoKey() *MemoKey {
 	return &board.memoKey
 }
 
-func (board *Board) Solve(target int) ([]Move, bool) {
+func (board *Board) Solve(target int) Solution {
 	solver := NewSolver(board, target)
 	return solver.Solve()
 }

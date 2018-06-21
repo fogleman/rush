@@ -69,11 +69,11 @@ func (g *Generator) Copy() *Generator {
 
 func (g *Generator) Energy() float64 {
 	board := Board{g.Width, g.Height, g.Pieces, g.Occupied, MakeMemoKey(g.Pieces)}
-	moves, ok := board.Solve(g.Target)
-	if !ok {
+	solution := board.Solve(g.Target)
+	if !solution.Solvable {
 		return 1
 	}
-	return -float64(len(moves))
+	return -float64(solution.NumMoves)
 }
 
 func (g *Generator) DoMove() {
