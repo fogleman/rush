@@ -32,6 +32,7 @@ type Board struct {
 	Height   int
 	Pieces   []Piece
 	Occupied []bool
+	memoKey  MemoKey
 }
 
 type Move struct {
@@ -48,7 +49,8 @@ func (move Move) AbsSteps() int {
 
 func NewEmptyBoard(w, h int) *Board {
 	occupied := make([]bool, w*h)
-	return &Board{w, h, nil, occupied}
+	memoKey := MakeMemoKey(nil)
+	return &Board{w, h, nil, occupied, memoKey}
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -114,7 +116,8 @@ func NewBoard(desc []string) (*Board, error) {
 	}
 
 	// create board
-	return &Board{w, h, pieces, occupied}, nil
+	memoKey := MakeMemoKey(pieces)
+	return &Board{w, h, pieces, occupied, memoKey}, nil
 }
 
 func (board *Board) String() string {
@@ -184,6 +187,7 @@ func (board *Board) DoMove(move Move) {
 	stride := piece.Stride(board.Width)
 	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, false)
 	piece.Position += stride * move.Steps
+	board.memoKey[move.Piece] = piece.Position
 	updateOccupied(board.Occupied, stride, piece.Position, piece.Size, true)
 }
 
@@ -191,12 +195,8 @@ func (board *Board) UndoMove(move Move) {
 	board.DoMove(Move{move.Piece, -move.Steps})
 }
 
-func (board *Board) MemoKey() MemoKey {
-	var key MemoKey
-	for i, piece := range board.Pieces {
-		key[i] = piece.Position
-	}
-	return key
+func (board *Board) MemoKey() *MemoKey {
+	return &board.memoKey
 }
 
 func (board *Board) Solve(target int) ([]Move, bool) {

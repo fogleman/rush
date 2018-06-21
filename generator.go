@@ -56,7 +56,7 @@ func (g *Generator) Generate() *Board {
 			updateOccupied(g.Occupied, piece.Stride(g.Width), piece.Position, piece.Size, true)
 		}
 	}
-	return &Board{g.Width, g.Height, g.Pieces, g.Occupied}
+	return &Board{g.Width, g.Height, g.Pieces, g.Occupied, MakeMemoKey(g.Pieces)}
 }
 
 func (g *Generator) Copy() *Generator {
@@ -68,7 +68,7 @@ func (g *Generator) Copy() *Generator {
 }
 
 func (g *Generator) Energy() float64 {
-	board := Board{g.Width, g.Height, g.Pieces, g.Occupied}
+	board := Board{g.Width, g.Height, g.Pieces, g.Occupied, MakeMemoKey(g.Pieces)}
 	moves, ok := board.Solve(g.Target)
 	if !ok {
 		return 1
