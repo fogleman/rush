@@ -19,8 +19,11 @@ type Solution struct {
 }
 
 func NewSolver(board *Board, target int) *Solver {
-	memo := NewMemo()
-	return &Solver{board, target, memo, nil, nil}
+	solver := Solver{}
+	solver.Board = board
+	solver.Target = target
+	solver.memo = NewMemo()
+	return &solver
 }
 
 func (solver *Solver) isSolved() bool {
@@ -28,17 +31,30 @@ func (solver *Solver) isSolved() bool {
 }
 
 func (solver *Solver) search(depth, maxDepth int) bool {
-	if solver.isSolved() {
-		return true
-	}
-	if depth == maxDepth {
-		return false
-	}
-	board := solver.Board
 	height := maxDepth - depth
+	if height == 0 {
+		return solver.isSolved()
+	}
+
+	board := solver.Board
 	if !solver.memo.Add(board.MemoKey(), height) {
 		return false
 	}
+
+	// count occupied squares between primary piece and target
+	primary := board.Pieces[0]
+	i0 := primary.Position + primary.Size
+	i1 := solver.Target + (primary.Size - 1)
+	minMoves := 0
+	for i := i0; i <= i1; i++ {
+		if board.Occupied[i] {
+			minMoves++
+		}
+	}
+	if minMoves >= height {
+		return false
+	}
+
 	buf := &solver.moves[depth]
 	*buf = board.Moves(*buf)
 	for _, move := range *buf {
@@ -60,8 +76,10 @@ func (solver *Solver) Solve() Solution {
 	if !solver.sanityCheck() {
 		return Solution{}
 	}
+	cutoff := solver.Board.Width - solver.Board.Pieces[0].Size
 	previousMemoSize := 0
 	for i := 1; ; i++ {
+		// fmt.Println(i, solver.memo.Size(), solver.memo.Hits())
 		solver.path = make([]Move, i)
 		solver.moves = make([][]Move, i)
 		if solver.search(0, i) {
@@ -81,7 +99,7 @@ func (solver *Solver) Solve() Solution {
 			}
 		}
 		memoSize := solver.memo.Size()
-		if memoSize == previousMemoSize {
+		if i > cutoff && memoSize == previousMemoSize {
 			return Solution{
 				Depth:    i,
 				MemoSize: solver.memo.Size(),

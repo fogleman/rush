@@ -15,10 +15,11 @@ func solve(desc []string) {
 	}
 
 	start := time.Now()
-	moves, ok := board.Solve(16)
+	solution := board.Solve(16)
 	elapsed := time.Since(start)
 
-	fmt.Println(ok, len(moves), elapsed)
+	// fmt.Println(solution, elapsed)
+	fmt.Println(solution.Solvable, solution.NumMoves, elapsed)
 }
 
 func main() {
