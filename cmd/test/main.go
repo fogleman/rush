@@ -2,10 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
-	"time"
+	// _ "net/http/pprof"
 
 	"github.com/fogleman/gg"
 	"github.com/fogleman/rush"
@@ -14,41 +11,28 @@ import (
 // 1237 9.586699271s
 // 1237 2.510939981s
 
-func generateAndSolve() (*rush.Board, []rush.Move, bool) {
-	generator := rush.NewGenerator(6, 6, 16, 2, rush.Horizontal)
-	board := generator.Generate()
-	start := time.Now()
-	solution := board.Solve(16)
-	elapsed := time.Since(start)
-	if elapsed > 50*time.Millisecond {
-		fmt.Println(solution.Solvable, solution.NumMoves, elapsed)
-		fmt.Println(board)
-		fmt.Println()
-		gg.SavePNG(fmt.Sprintf("impossible-%d.png", int(time.Now().Unix())), board.Render())
-	}
-	return board, solution.Moves, solution.Solvable
-}
-
 func main() {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 
 	best := 0
-	start := time.Now()
+	worst := 0
+	// start := time.Now()
 	for i := 0; ; i++ {
-		board, moves, ok := generateAndSolve()
-		if !ok {
-			continue
+		generator := rush.NewGenerator(6, 6, 16, 2, rush.Horizontal)
+		board := generator.Generate()
+		// start := time.Now()
+		solution := board.Solve(16)
+		// elapsed := time.Since(start)
+
+		if !solution.Solvable && solution.MemoSize > worst {
+			worst = solution.MemoSize
+			gg.SavePNG(fmt.Sprintf("impossible-%07d-%02d.png", solution.MemoSize, solution.Depth), board.Render())
 		}
-		if len(moves) > best {
-			elapsed := time.Since(start)
-			best = len(moves)
-			fmt.Println(i, elapsed)
-			fmt.Println(board)
-			fmt.Println(len(moves), moves)
-			fmt.Println()
-			gg.SavePNG(fmt.Sprintf("possible-%d.png", int(time.Now().Unix())), board.Render())
+		if solution.NumMoves > best {
+			best = solution.NumMoves
+			gg.SavePNG(fmt.Sprintf("possible-%02d.png", best), board.Render())
 		}
 	}
 

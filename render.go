@@ -18,7 +18,10 @@ const (
 	PrimaryPieceColor = "962D3E"
 	PieceColor        = "348899"
 	PieceOutlineColor = "222222"
+	LabelColor        = "222222"
 )
+
+const Font = "/Library/Fonts/Arial.ttf"
 
 func renderBoard(board *Board) image.Image {
 	const S = CellSize
@@ -27,6 +30,7 @@ func renderBoard(board *Board) image.Image {
 	w := bw * S
 	h := bh * S
 	dc := gg.NewContext(w+Padding*2, h+Padding*2)
+	dc.LoadFontFace(Font, 36)
 	dc.Translate(Padding, Padding)
 	dc.SetHexColor(BackgroundColor)
 	dc.Clear()
@@ -75,6 +79,10 @@ func renderBoard(board *Board) image.Image {
 		dc.SetLineWidth(S / 32.0)
 		dc.SetHexColor(PieceOutlineColor)
 		dc.Stroke()
+		tx := px + pw/2
+		ty := py + ph/2
+		dc.SetHexColor(LabelColor)
+		dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
 	}
 	return dc.Image()
 }
