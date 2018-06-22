@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+const MinPieceSize = 2
+const MinBoardSize = MinPieceSize + 1
+
 type Orientation int
 
 const (
@@ -35,14 +38,6 @@ func (piece *Piece) Col(w int) int {
 	return piece.Position % w
 }
 
-type Board struct {
-	Width    int
-	Height   int
-	Pieces   []Piece
-	Occupied []bool
-	memoKey  MemoKey
-}
-
 type Move struct {
 	Piece int
 	Steps int
@@ -55,6 +50,14 @@ func (move Move) AbsSteps() int {
 	return move.Steps
 }
 
+type Board struct {
+	Width    int
+	Height   int
+	Pieces   []Piece
+	occupied []bool
+	memoKey  MemoKey
+}
+
 func NewEmptyBoard(w, h int) *Board {
 	occupied := make([]bool, w*h)
 	memoKey := MakeMemoKey(nil)
@@ -64,12 +67,12 @@ func NewEmptyBoard(w, h int) *Board {
 func NewBoard(desc []string) (*Board, error) {
 	// determine board size
 	h := len(desc)
-	if h < 2 {
-		return nil, fmt.Errorf("board height must be >= 2")
+	if h < MinBoardSize {
+		return nil, fmt.Errorf("board height must be >= %d", MinBoardSize)
 	}
 	w := len(desc[0])
-	if w < 2 {
-		return nil, fmt.Errorf("board width must be >= 2")
+	if w < MinBoardSize {
+		return nil, fmt.Errorf("board width must be >= %d", MinBoardSize)
 	}
 
 	// identify occupied cells and their labels
@@ -86,12 +89,6 @@ func NewBoard(desc []string) (*Board, error) {
 			positions[label] = append(positions[label], i)
 		}
 	}
-	if len(positions) < 1 {
-		return nil, fmt.Errorf("board must have at least one piece")
-	}
-	if len(positions) > MaxPieces {
-		return nil, fmt.Errorf("board must have <= %d pieces", MaxPieces)
-	}
 
 	// find and sort distinct piece labels
 	labels := make([]string, 0, len(positions))
@@ -104,8 +101,8 @@ func NewBoard(desc []string) (*Board, error) {
 	pieces := make([]Piece, 0, len(labels))
 	for _, label := range labels {
 		ps := positions[label]
-		if len(ps) < 2 {
-			return nil, fmt.Errorf("piece %s length must be >= 2", label)
+		if len(ps) < MinPieceSize {
+			return nil, fmt.Errorf("piece %s length must be >= %d", label, MinPieceSize)
 		}
 		stride := ps[1] - ps[0]
 		if stride != 1 && stride != w {
@@ -124,8 +121,8 @@ func NewBoard(desc []string) (*Board, error) {
 	}
 
 	// create board
-	memoKey := MakeMemoKey(pieces)
-	return &Board{w, h, pieces, occupied, memoKey}, nil
+	board := &Board{w, h, pieces, occupied, MakeMemoKey(pieces)}
+	return board, board.Validate()
 }
 
 func (board *Board) String() string {
@@ -137,16 +134,140 @@ func (board *Board) String() string {
 	}
 	for i, piece := range board.Pieces {
 		label := string('A' + i)
+		idx := piece.Position
 		stride := piece.Stride(w)
 		for j := 0; j < piece.Size; j++ {
-			grid[piece.Position+stride*j] = label
+			grid[idx] = label
+			idx += stride
 		}
 	}
 	rows := make([]string, h)
 	for y := 0; y < h; y++ {
-		rows[y] = strings.Join(grid[y*w:y*w+w], "")
+		i := y * w
+		rows[y] = strings.Join(grid[i:i+w], "")
 	}
 	return strings.Join(rows, "\n")
+}
+
+func (board *Board) Validate() error {
+	w := board.Width
+	h := board.Height
+	pieces := board.Pieces
+
+	// board size must be >= MinBoardSize
+	if w < MinBoardSize {
+		return fmt.Errorf("board width must be >= %d", MinBoardSize)
+	}
+	if h < MinBoardSize {
+		return fmt.Errorf("board height must be >= %d", MinBoardSize)
+	}
+
+	// board must have at least one piece
+	if len(pieces) < 1 {
+		return fmt.Errorf("board must have at least one piece")
+	}
+
+	// board must have <= MaxPieces
+	if len(pieces) > MaxPieces {
+		return fmt.Errorf("board must have <= %d pieces", MaxPieces)
+	}
+
+	// primary piece must be horizontal
+	if pieces[0].Orientation != Horizontal {
+		return fmt.Errorf("primary piece must be horizontal")
+	}
+
+	// validate pieces
+	primaryRow := pieces[0].Row(w)
+	occupied := make([]bool, w*h)
+	for i, piece := range pieces {
+		label := string('A' + i)
+		row := piece.Row(w)
+		col := piece.Col(w)
+
+		// piece size must be >= MinPieceSize
+		if piece.Size < MinPieceSize {
+			return fmt.Errorf("piece %s must have size >= %d", label, MinPieceSize)
+		}
+
+		// no horizontal pieces can be on the same row as the primary piece
+		if i > 0 && piece.Orientation == Horizontal && row == primaryRow {
+			return fmt.Errorf("no horizontal pieces can be on the primary row")
+		}
+
+		// pieces must be contained within the grid
+		ok := true
+		if piece.Orientation == Horizontal {
+			if row < 0 || row >= h {
+				ok = false
+			}
+			if col < 0 || col+piece.Size > w {
+				ok = false
+			}
+		} else {
+			if col < 0 || col >= w {
+				ok = false
+			}
+			if row < 0 || row+piece.Size > h {
+				ok = false
+			}
+		}
+		if !ok {
+			return fmt.Errorf("piece %s is outside of the %dx%d grid", label, w, h)
+		}
+
+		// pieces must not intersect
+		idx := piece.Position
+		stride := piece.Stride(w)
+		for j := 0; j < piece.Size; j++ {
+			if occupied[idx] {
+				return fmt.Errorf("piece %s intersects with another piece", label)
+			}
+			occupied[idx] = true
+			idx += stride
+		}
+	}
+
+	return nil
+}
+
+func (board *Board) isOccupied(piece Piece) bool {
+	idx := piece.Position
+	stride := piece.Stride(board.Width)
+	for i := 0; i < piece.Size; i++ {
+		if board.occupied[idx] {
+			return true
+		}
+		idx += stride
+	}
+	return false
+}
+
+func (board *Board) setOccupied(piece Piece, value bool) {
+	idx := piece.Position
+	stride := piece.Stride(board.Width)
+	for i := 0; i < piece.Size; i++ {
+		board.occupied[idx] = value
+		idx += stride
+	}
+}
+
+func (board *Board) AddPiece(piece Piece) bool {
+	if board.isOccupied(piece) {
+		return false
+	}
+	i := len(board.Pieces)
+	board.Pieces = append(board.Pieces, piece)
+	board.setOccupied(piece, true)
+	board.memoKey[i] = piece.Position
+	return true
+}
+
+func (board *Board) Target() int {
+	w := board.Width
+	piece := board.Pieces[0]
+	row := piece.Row(w)
+	return (row+1)*w - piece.Size
 }
 
 func (board *Board) Moves(buf []Move) []Move {
@@ -169,22 +290,20 @@ func (board *Board) Moves(buf []Move) []Move {
 		// reverse (negative steps)
 		idx := piece.Position - stride
 		for steps := -1; steps >= reverseSteps; steps-- {
-			if board.Occupied[idx] {
+			if board.occupied[idx] {
 				break
 			}
 			moves = append(moves, Move{i, steps})
 			idx -= stride
-			// break
 		}
 		// forward (positive steps)
 		idx = piece.Position + piece.Size*stride
 		for steps := 1; steps <= forwardSteps; steps++ {
-			if board.Occupied[idx] {
+			if board.occupied[idx] {
 				break
 			}
 			moves = append(moves, Move{i, steps})
 			idx += stride
-			// break
 		}
 	}
 	return moves
@@ -196,7 +315,7 @@ func (board *Board) DoMove(move Move) {
 
 	idx := piece.Position
 	for i := 0; i < piece.Size; i++ {
-		board.Occupied[idx] = false
+		board.occupied[idx] = false
 		idx += stride
 	}
 
@@ -205,7 +324,7 @@ func (board *Board) DoMove(move Move) {
 
 	idx = piece.Position
 	for i := 0; i < piece.Size; i++ {
-		board.Occupied[idx] = true
+		board.occupied[idx] = true
 		idx += stride
 	}
 }
@@ -218,9 +337,8 @@ func (board *Board) MemoKey() *MemoKey {
 	return &board.memoKey
 }
 
-func (board *Board) Solve(target int) Solution {
-	solver := NewSolver(board, target)
-	return solver.Solve()
+func (board *Board) Solve() Solution {
+	return NewSolver(board).Solve()
 }
 
 func (board *Board) Render() image.Image {

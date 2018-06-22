@@ -15,7 +15,7 @@ func solve(desc []string) {
 	}
 
 	start := time.Now()
-	solution := board.Solve(16)
+	solution := board.Solve()
 	elapsed := time.Since(start)
 
 	// fmt.Println(solution, elapsed)
