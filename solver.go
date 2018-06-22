@@ -170,6 +170,11 @@ We can repeat this process of identifying blocked squares based on each row
 and column's configuration and existing blocked squares until no new squares
 are identified.
 
+..xAA. => ..x.x.
+AAA.BB => .xx.x.
+AA..BB => ......
+.x.AA. => .x....
+
 */
 
 func blockedSquares(n int, positions, sizes []int, blocked []bool) []bool {
