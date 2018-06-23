@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/fogleman/gg"
 	"github.com/fogleman/rush"
@@ -15,7 +16,8 @@ func main() {
 	worst := 0
 	generator := rush.NewDefaultGenerator()
 	for i := 0; ; i++ {
-		board := generator.Generate(10)
+		n := rand.Intn(14) + 1
+		board := generator.Generate(n)
 		solution := board.Solve()
 		if !solution.Solvable && solution.MemoSize > worst {
 			worst = solution.MemoSize

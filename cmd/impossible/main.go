@@ -40,6 +40,9 @@ func main() {
 	counter := 0
 	for i := 0; ; i++ {
 		board := generator.Generate(4)
+		if board.Impossible() {
+			continue
+		}
 		key := makeKey(board)
 		if _, ok := seen[key]; ok {
 			continue
