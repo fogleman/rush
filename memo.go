@@ -1,7 +1,5 @@
 package rush
 
-const MaxPieces = 16
-
 type MemoKey [MaxPieces]int
 
 func MakeMemoKey(pieces []Piece) MemoKey {

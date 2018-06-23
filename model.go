@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-const MinPieceSize = 2
-const MinBoardSize = MinPieceSize + 1
-
 type Orientation int
 
 const (

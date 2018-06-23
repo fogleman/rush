@@ -85,8 +85,6 @@ result = [4]    # blocked squares found by the algorithm
 
 */
 
-const MaxDimension = 16
-
 var theStaticAnalyzer = NewStaticAnalyzer()
 
 type StaticAnalyzer struct {
@@ -103,18 +101,18 @@ type StaticAnalyzer struct {
 }
 
 func NewStaticAnalyzer() *StaticAnalyzer {
-	maxPiecesPerRow := MaxDimension / MinPieceSize
-	maxPlacementsPerRow := MaxDimension - MinPieceSize + 1
+	maxPiecesPerRow := MaxBoardSize / MinPieceSize
+	maxPlacementsPerRow := MaxBoardSize - MinPieceSize + 1
 	sa := &StaticAnalyzer{}
-	sa.horz = make([]bool, MaxDimension*MaxDimension)
-	sa.vert = make([]bool, MaxDimension*MaxDimension)
+	sa.horz = make([]bool, MaxBoardSize*MaxBoardSize)
+	sa.vert = make([]bool, MaxBoardSize*MaxBoardSize)
 	sa.positions = make([]int, maxPiecesPerRow)
 	sa.sizes = make([]int, maxPiecesPerRow)
-	sa.blocked = make([]int, MaxDimension)
+	sa.blocked = make([]int, MaxBoardSize)
 	sa.lens = make([]int, maxPiecesPerRow)
 	sa.idx = make([]int, maxPiecesPerRow)
-	sa.counts = make([]int, MaxDimension)
-	sa.result = make([]int, MaxDimension)
+	sa.counts = make([]int, MaxBoardSize)
+	sa.result = make([]int, MaxBoardSize)
 	sa.placements = make([][]int, maxPiecesPerRow)
 	for i := range sa.placements {
 		sa.placements[i] = make([]int, maxPlacementsPerRow)
