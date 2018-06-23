@@ -123,12 +123,7 @@ func NewStaticAnalyzer() *StaticAnalyzer {
 }
 
 func (sa *StaticAnalyzer) Impossible(board *Board) bool {
-	for i := range sa.horz {
-		sa.horz[i] = false
-		sa.vert[i] = false
-	}
-	for sa.step(board) {
-	}
+	sa.analyze(board)
 	w := board.Width
 	piece := board.Pieces[0]
 	i0 := piece.Position + piece.Size
@@ -139,6 +134,27 @@ func (sa *StaticAnalyzer) Impossible(board *Board) bool {
 		}
 	}
 	return false
+}
+
+func (sa *StaticAnalyzer) BlockedSquares(board *Board) []int {
+	sa.analyze(board)
+	n := board.Width * board.Height
+	var result []int
+	for i := 0; i < n; i++ {
+		if sa.horz[i] || sa.vert[i] {
+			result = append(result, i)
+		}
+	}
+	return result
+}
+
+func (sa *StaticAnalyzer) analyze(board *Board) {
+	for i := range sa.horz {
+		sa.horz[i] = false
+		sa.vert[i] = false
+	}
+	for sa.step(board) {
+	}
 }
 
 func (sa *StaticAnalyzer) step(board *Board) bool {

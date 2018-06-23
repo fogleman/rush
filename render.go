@@ -14,6 +14,7 @@ const (
 const (
 	BackgroundColor   = "FFFFFF"
 	BoardColor        = "F2EBC7"
+	BlockedColor      = "D96D60"
 	GridLineColor     = "343642"
 	PrimaryPieceColor = "962D3E"
 	PieceColor        = "348899"
@@ -36,6 +37,13 @@ func renderBoard(board *Board) image.Image {
 	dc.Clear()
 	dc.SetHexColor(BoardColor)
 	dc.DrawRectangle(0, 0, float64(w+1), float64(h+1))
+	dc.Fill()
+	for _, i := range board.BlockedSquares() {
+		x := float64(i % bw)
+		y := float64(i / bw)
+		dc.DrawRectangle(x*S, y*S, S, S)
+	}
+	dc.SetHexColor(BlockedColor)
 	dc.Fill()
 	for x := S; x < w; x += S {
 		fx := float64(x)

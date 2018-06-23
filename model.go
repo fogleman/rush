@@ -338,3 +338,7 @@ func (board *Board) Render() image.Image {
 func (board *Board) Impossible() bool {
 	return theStaticAnalyzer.Impossible(board)
 }
+
+func (board *Board) BlockedSquares() []int {
+	return theStaticAnalyzer.BlockedSquares(board)
+}
