@@ -19,7 +19,7 @@ func main() {
 
 	t0 := time.Now()
 	for i := 1; ; i++ {
-		board := generator.Generate()
+		board := generator.Generate(10)
 		start := time.Now()
 		solution := board.Solve()
 		elapsed := time.Since(start)
@@ -32,7 +32,12 @@ func main() {
 			i, gps, elapsed.Seconds(), solution.Solvable, solution.Depth,
 			solution.MemoSize, solution.MemoHits)
 		if !solution.Solvable {
-			// gg.SavePNG(fmt.Sprintf("impossible-%d.png", int(time.Now().Unix())), board.Render())
+			// fmt.Println(board.Blocked())
+			// if board.Blocked() {
+			// 	gg.SavePNG(fmt.Sprintf("blocked-%d.png", int(time.Now().Unix())), board.Render())
+			// } else {
+			// 	gg.SavePNG(fmt.Sprintf("impossible-%d.png", int(time.Now().Unix())), board.Render())
+			// }
 		}
 	}
 }

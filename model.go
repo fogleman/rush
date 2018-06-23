@@ -334,3 +334,7 @@ func (board *Board) Solve() Solution {
 func (board *Board) Render() image.Image {
 	return renderBoard(board)
 }
+
+func (board *Board) Blocked() bool {
+	return targetIsBlocked(board)
+}

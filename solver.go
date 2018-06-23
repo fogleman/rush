@@ -1,5 +1,7 @@
 package rush
 
+import "sort"
+
 type Solver struct {
 	board  *Board
 	target int
@@ -79,6 +81,10 @@ func (solver *Solver) Solve() Solution {
 
 	if solver.isSolved() {
 		return Solution{Solvable: true}
+	}
+
+	if board.Blocked() {
+		return Solution{}
 	}
 
 	previousMemoSize := 0
@@ -199,7 +205,7 @@ result = [4]	# blocked squares found by the algorithm
 
 */
 
-func blockedSquares(w int, positions, sizes []int, blocked []int) []int {
+func blockedSquaresForRow(w int, positions, sizes, blocked []int) []int {
 	// for each piece, determine its range based on w and blocked
 	n := len(positions)
 	rs := make([][]int, n)
@@ -270,4 +276,97 @@ func blockedSquares(w int, positions, sizes []int, blocked []int) []int {
 	}
 	// fmt.Println(count, counts, result)
 	return result
+}
+
+func updateBlocked(board *Board, horz, vert []bool) bool {
+	changed := false
+	w := board.Width
+	h := board.Height
+	// copy and sort pieces by position
+	pieces := make([]Piece, len(board.Pieces))
+	copy(pieces, board.Pieces)
+	sort.Slice(pieces, func(i, j int) bool {
+		return pieces[i].Position < pieces[j].Position
+	})
+	// iterate over rows
+	for y := 0; y < h; y++ {
+		var positions, sizes, blocked []int
+		for _, piece := range pieces {
+			if piece.Orientation != Horizontal {
+				continue
+			}
+			if piece.Row(w) != y {
+				continue
+			}
+			positions = append(positions, piece.Col(w))
+			sizes = append(sizes, piece.Size)
+		}
+		if len(positions) == 0 {
+			continue
+		}
+		i0 := y * w
+		for i := 0; i < w; i++ {
+			if horz[i0+i] {
+				blocked = append(blocked, i)
+			}
+		}
+		result := blockedSquaresForRow(w, positions, sizes, blocked)
+		for _, i := range result {
+			i += i0
+			if !vert[i] {
+				vert[i] = true
+				changed = true
+			}
+		}
+	}
+	// iterate over cols
+	for x := 0; x < w; x++ {
+		var positions, sizes, blocked []int
+		for _, piece := range pieces {
+			if piece.Orientation != Vertical {
+				continue
+			}
+			if piece.Col(w) != x {
+				continue
+			}
+			positions = append(positions, piece.Row(w))
+			sizes = append(sizes, piece.Size)
+		}
+		if len(positions) == 0 {
+			continue
+		}
+		i0 := x
+		for i := 0; i < h; i++ {
+			if vert[i0+i*w] {
+				blocked = append(blocked, i)
+			}
+		}
+		result := blockedSquaresForRow(h, positions, sizes, blocked)
+		for _, i := range result {
+			i = i*w + x
+			if !horz[i] {
+				horz[i] = true
+				changed = true
+			}
+		}
+	}
+	return changed
+}
+
+func targetIsBlocked(board *Board) bool {
+	w := board.Width
+	h := board.Height
+	horz := make([]bool, w*h)
+	vert := make([]bool, w*h)
+	for updateBlocked(board, horz, vert) {
+	}
+	piece := board.Pieces[0]
+	i0 := piece.Position + piece.Size
+	i1 := (piece.Row(w) + 1) * w
+	for i := i0; i < i1; i++ {
+		if horz[i] || vert[i] {
+			return true
+		}
+	}
+	return false
 }
