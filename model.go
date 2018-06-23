@@ -196,24 +196,14 @@ func (board *Board) Validate() error {
 		}
 
 		// pieces must be contained within the grid
-		ok := true
 		if piece.Orientation == Horizontal {
-			if row < 0 || row >= h {
-				ok = false
-			}
-			if col < 0 || col+piece.Size > w {
-				ok = false
+			if row < 0 || row >= h || col < 0 || col+piece.Size > w {
+				return fmt.Errorf("piece %s is outside of the grid", label)
 			}
 		} else {
-			if col < 0 || col >= w {
-				ok = false
+			if col < 0 || col >= w || row < 0 || row+piece.Size > h {
+				return fmt.Errorf("piece %s is outside of the grid", label)
 			}
-			if row < 0 || row+piece.Size > h {
-				ok = false
-			}
-		}
-		if !ok {
-			return fmt.Errorf("piece %s is outside of the %dx%d grid", label, w, h)
 		}
 
 		// pieces must not intersect

@@ -170,14 +170,104 @@ We can repeat this process of identifying blocked squares based on each row
 and column's configuration and existing blocked squares until no new squares
 are identified.
 
-..xAA. => ..x.x.
+So we need an algorithm that can take the pieces present on a row or column,
+along with already-identified blocked squares from the perpendicular direction,
+and return a set of blocked squares. Returning to the column above:
+
+..xCC. => ....x.
+
+Note that we need to distinguish between horizontally blocked squares and
+vertically blocked squares. So the example above does not retain blocked
+squares from its input. Here are some example inputs and outputs using our
+ASCII based representation:
+
+..xAA. => ....x.
 AAA.BB => .xx.x.
 AA..BB => ......
-.x.AA. => .x....
+.x.AA. => ......
+
+Let's figure out the appropriate data structures. We'll use this example:
+
+012345	  012345
+..xAA. => ....x.
+
+n = 6 			# number of squares on the row (or column)
+blocked = [2]   # blocked squares from the perpendicular orientation
+positions = [3] # positions of pieces
+sizes = [2]	 	# sizes of pieces
+result = [4]	# blocked squares found by the algorithm
 
 */
 
-func blockedSquares(n int, positions, sizes []int, blocked []bool) []bool {
-	result := make([]bool, n)
+func blockedSquares(w int, positions, sizes []int, blocked []int) []int {
+	// for each piece, determine its range based on w and blocked
+	n := len(positions)
+	rs := make([][]int, n)
+	lens := make([]int, n)
+	for i := 0; i < n; i++ {
+		p := positions[i]
+		s := sizes[i]
+		x0 := 0
+		x1 := w - s
+		for _, b := range blocked {
+			if b < p {
+				x0 = maxInt(x0, b+1)
+			}
+			if b > p {
+				x1 = minInt(x1, b-s)
+			}
+		}
+		d := x1 - x0 + 1
+		r := make([]int, d)
+		for j := 0; j < d; j++ {
+			r[j] = x0 + j
+		}
+		rs[i] = r
+		lens[i] = len(r)
+	}
+	// do something like itertools.product in python
+	count := 0
+	counts := make([]int, w)
+	idx := make([]int, n)
+	for {
+		// make sure pieces aren't overlapping
+		ok := true
+		for i := 1; i < n; i++ {
+			j := i - 1
+			if rs[i][idx[i]]-rs[j][idx[j]] < sizes[j] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			// increment count
+			count++
+			// increment counts for occupied squares
+			for i := 0; i < n; i++ {
+				p := rs[i][idx[i]]
+				s := sizes[i]
+				for j := 0; j < s; j++ {
+					counts[p+j]++
+				}
+			}
+		}
+		// go to next lexicographic index
+		i := n - 1
+		for ; i >= 0 && idx[i] == lens[i]-1; i-- {
+			idx[i] = 0
+		}
+		if i < 0 {
+			break
+		}
+		idx[i]++
+	}
+	// see which squares were always occupied
+	var result []int
+	for i, n := range counts {
+		if n == count {
+			result = append(result, i)
+		}
+	}
+	// fmt.Println(count, counts, result)
 	return result
 }
