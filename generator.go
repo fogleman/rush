@@ -21,7 +21,7 @@ func NewDefaultGenerator() *Generator {
 	return &Generator{6, 6, 2, 2}
 }
 
-func (g *Generator) Generate(n int) *Board {
+func (g *Generator) Generate(numPieces, numWalls int) *Board {
 	// create empty board
 	board := NewEmptyBoard(g.Width, g.Height)
 
@@ -30,10 +30,18 @@ func (g *Generator) Generate(n int) *Board {
 	board.AddPiece(primary)
 
 	// add random pieces
-	for i := 0; i < n; i++ {
+	for i := 0; i < numPieces; i++ {
 		piece, ok := g.randomPiece(board, 100)
 		if ok {
 			board.AddPiece(piece)
+		}
+	}
+
+	// add random walls
+	for i := 0; i < numWalls; i++ {
+		wall, ok := g.randomWall(board, 100)
+		if ok {
+			board.AddWall(wall)
 		}
 	}
 	return board
@@ -60,4 +68,15 @@ func (g *Generator) randomPiece(board *Board, maxAttempts int) (Piece, bool) {
 		}
 	}
 	return Piece{}, false
+}
+
+func (g *Generator) randomWall(board *Board, maxAttempts int) (int, bool) {
+	n := board.Width * board.Height
+	for i := 0; i < maxAttempts; i++ {
+		p := rand.Intn(n)
+		if !board.occupied[p] {
+			return p, true
+		}
+	}
+	return 0, false
 }

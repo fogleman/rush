@@ -20,6 +20,7 @@ const (
 	PieceColor        = "348899"
 	PieceOutlineColor = "222222"
 	LabelColor        = "222222"
+	WallColor         = "111111"
 )
 
 const Font = "/Library/Fonts/Arial.ttf"
@@ -45,6 +46,21 @@ func renderBoard(board *Board) image.Image {
 	}
 	dc.SetHexColor(BlockedColor)
 	dc.Fill()
+	p := S / 8.0
+	r := S / 32.0
+	for _, i := range board.Walls {
+		x := float64(i % bw)
+		y := float64(i / bw)
+		dc.DrawRectangle(x*S, y*S, S, S)
+		dc.SetHexColor(WallColor)
+		dc.Fill()
+		dc.DrawCircle(x*S+p, y*S+p, r)
+		dc.DrawCircle(x*S+S-p, y*S+p, r)
+		dc.DrawCircle(x*S+p, y*S+S-p, r)
+		dc.DrawCircle(x*S+S-p, y*S+S-p, r)
+		dc.SetHexColor(BoardColor)
+		dc.Fill()
+	}
 	for x := S; x < w; x += S {
 		fx := float64(x)
 		dc.DrawLine(fx, 0, fx, float64(h))

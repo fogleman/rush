@@ -51,6 +51,7 @@ type Board struct {
 	Width    int
 	Height   int
 	Pieces   []Piece
+	Walls    []int
 	occupied []bool
 	memoKey  MemoKey
 }
@@ -58,7 +59,7 @@ type Board struct {
 func NewEmptyBoard(w, h int) *Board {
 	occupied := make([]bool, w*h)
 	memoKey := MakeMemoKey(nil)
-	return &Board{w, h, nil, occupied, memoKey}
+	return &Board{w, h, nil, nil, occupied, memoKey}
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -75,6 +76,7 @@ func NewBoard(desc []string) (*Board, error) {
 	// identify occupied cells and their labels
 	occupied := make([]bool, w*h)
 	positions := make(map[string][]int)
+	var walls []int
 	for y, row := range desc {
 		for x, value := range row {
 			label := string(value)
@@ -83,7 +85,12 @@ func NewBoard(desc []string) (*Board, error) {
 			}
 			i := y*w + x
 			occupied[i] = true
-			positions[label] = append(positions[label], i)
+			if label == "x" {
+				walls = append(walls, i)
+			} else {
+				positions[label] = append(positions[label], i)
+			}
+
 		}
 	}
 
@@ -118,7 +125,7 @@ func NewBoard(desc []string) (*Board, error) {
 	}
 
 	// create board
-	board := &Board{w, h, pieces, occupied, MakeMemoKey(pieces)}
+	board := &Board{w, h, pieces, walls, occupied, MakeMemoKey(pieces)}
 	return board, board.Validate()
 }
 
@@ -128,6 +135,9 @@ func (board *Board) String() string {
 	grid := make([]string, w*h)
 	for i := range grid {
 		grid[i] = "."
+	}
+	for _, i := range board.Walls {
+		grid[i] = "x"
 	}
 	for i, piece := range board.Pieces {
 		label := string('A' + i)
@@ -174,9 +184,23 @@ func (board *Board) Validate() error {
 		return fmt.Errorf("primary piece must be horizontal")
 	}
 
+	// validate walls
+	occupied := make([]bool, w*h)
+	for _, i := range board.Walls {
+		// wall must be inside the grid
+		if i < 0 || i >= w*h {
+			return fmt.Errorf("a wall is outside of the grid")
+		}
+
+		// walls must not intersect
+		if occupied[i] {
+			return fmt.Errorf("a wall intersects another wall")
+		}
+		occupied[i] = true
+	}
+
 	// validate pieces
 	primaryRow := pieces[0].Row(w)
-	occupied := make([]bool, w*h)
 	for i, piece := range pieces {
 		label := string('A' + i)
 		row := piece.Row(w)
@@ -247,6 +271,15 @@ func (board *Board) AddPiece(piece Piece) bool {
 	board.Pieces = append(board.Pieces, piece)
 	board.setOccupied(piece, true)
 	board.memoKey[i] = piece.Position
+	return true
+}
+
+func (board *Board) AddWall(i int) bool {
+	if board.occupied[i] {
+		return false
+	}
+	board.Walls = append(board.Walls, i)
+	board.occupied[i] = true
 	return true
 }
 

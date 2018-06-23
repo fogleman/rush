@@ -16,8 +16,9 @@ func main() {
 	worst := 0
 	generator := rush.NewDefaultGenerator()
 	for i := 0; ; i++ {
-		n := rand.Intn(14) + 1
-		board := generator.Generate(n)
+		numPieces := rand.Intn(14) + 1
+		numWalls := 3
+		board := generator.Generate(numPieces, numWalls)
 		solution := board.Solve()
 		if !solution.Solvable && solution.MemoSize > worst {
 			worst = solution.MemoSize

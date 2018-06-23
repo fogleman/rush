@@ -151,6 +151,10 @@ func (sa *StaticAnalyzer) analyze(board *Board) {
 		sa.horz[i] = false
 		sa.vert[i] = false
 	}
+	for _, i := range board.Walls {
+		sa.horz[i] = true
+		sa.vert[i] = true
+	}
 	for sa.step(board) {
 	}
 }
