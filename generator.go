@@ -30,9 +30,8 @@ func (g *Generator) Generate(n int) *Board {
 	board.AddPiece(primary)
 
 	// add random pieces
-	// n := rand.Intn(12) + 3
 	for i := 0; i < n; i++ {
-		piece, ok := g.randomPiece(board, 10000)
+		piece, ok := g.randomPiece(board, 100)
 		if ok {
 			board.AddPiece(piece)
 		}

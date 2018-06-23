@@ -335,6 +335,6 @@ func (board *Board) Render() image.Image {
 	return renderBoard(board)
 }
 
-func (board *Board) Blocked() bool {
-	return targetIsBlocked(board)
+func (board *Board) Impossible() bool {
+	return theStaticAnalyzer.Impossible(board)
 }
