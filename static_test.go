@@ -1,25 +1,33 @@
 package rush
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
-func TestStaticAnalysis(t *testing.T) {
-	f := theStaticAnalyzer.blockedSquares
+func TestBlockedSquares(t *testing.T) {
+	test := func(w int, positions, sizes, blocked, expected []int) {
+		result := theStaticAnalyzer.blockedSquares(w, positions, sizes, blocked)
+		if !reflect.DeepEqual(result, expected) {
+			t.Fail()
+		}
+	}
 
 	// ..xAA. => ....x.
-	f(6, []int{3}, []int{2}, []int{2})
+	test(6, []int{3}, []int{2}, []int{2}, []int{4})
 
 	// AAA.BB => .xx.x.
-	f(6, []int{0, 4}, []int{3, 2}, []int{})
+	test(6, []int{0, 4}, []int{3, 2}, []int{}, []int{1, 2, 4})
 
 	// AA..BB => ......
-	f(6, []int{0, 4}, []int{2, 2}, []int{})
+	test(6, []int{0, 4}, []int{2, 2}, []int{}, []int{})
 
 	// .x.AA. => ......
-	f(6, []int{3}, []int{2}, []int{1})
+	test(6, []int{3}, []int{2}, []int{1}, []int{})
 
 	// .xAA..BBx.. => ...........
-	f(11, []int{2, 6}, []int{2, 2}, []int{1, 8})
+	test(11, []int{2, 6}, []int{2, 2}, []int{1, 8}, []int{})
 
 	// .xAAA.BBx.. => ...xx.x....
-	f(11, []int{2, 6}, []int{3, 2}, []int{1, 8})
+	test(11, []int{2, 6}, []int{3, 2}, []int{1, 8}, []int{3, 4, 6})
 }

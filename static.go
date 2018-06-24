@@ -88,6 +88,8 @@ result = [4]    # blocked squares found by the algorithm
 var theStaticAnalyzer = NewStaticAnalyzer()
 
 type StaticAnalyzer struct {
+	// these buffers are allocated once so multiple static analyses can be
+	// performed faster (less GC)
 	horz       []bool
 	vert       []bool
 	positions  []int
@@ -121,7 +123,9 @@ func NewStaticAnalyzer() *StaticAnalyzer {
 }
 
 func (sa *StaticAnalyzer) Impossible(board *Board) bool {
+	// run analysis
 	sa.analyze(board)
+	// see if any squares between the primary piece and its exit are blocked
 	w := board.Width
 	piece := board.Pieces[0]
 	i0 := piece.Position + piece.Size
@@ -135,7 +139,9 @@ func (sa *StaticAnalyzer) Impossible(board *Board) bool {
 }
 
 func (sa *StaticAnalyzer) BlockedSquares(board *Board) []int {
+	// run analysis
 	sa.analyze(board)
+	// compile a list of all blocked squares
 	n := board.Width * board.Height
 	var result []int
 	for i := 0; i < n; i++ {
@@ -147,14 +153,17 @@ func (sa *StaticAnalyzer) BlockedSquares(board *Board) []int {
 }
 
 func (sa *StaticAnalyzer) analyze(board *Board) {
+	// zero out buffers
 	for i := range sa.horz {
 		sa.horz[i] = false
 		sa.vert[i] = false
 	}
+	// walls are always blocked for both directions
 	for _, i := range board.Walls {
 		sa.horz[i] = true
 		sa.vert[i] = true
 	}
+	// run the step function until no more changes are made
 	for sa.step(board) {
 	}
 }
@@ -166,6 +175,7 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 	pieces := board.Pieces
 	// iterate over rows
 	for y := 0; y < h; y++ {
+		// find all pieces in this row
 		positions, sizes := sa.positions[:0], sa.sizes[:0]
 		for _, piece := range pieces {
 			if piece.Orientation == Horizontal && piece.Row(w) == y {
@@ -173,9 +183,11 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 				sizes = append(sizes, piece.Size)
 			}
 		}
+		// abort early if row is empty
 		if len(positions) == 0 {
 			continue
 		}
+		// figure out which squares are blocked from opposite direction
 		blocked := sa.blocked[:0]
 		i0 := y * w
 		for i := 0; i < w; i++ {
@@ -183,6 +195,7 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 				blocked = append(blocked, i)
 			}
 		}
+		// update blocked squares on this row
 		result := sa.blockedSquares(w, positions, sizes, blocked)
 		for _, i := range result {
 			i = i + i0
@@ -194,6 +207,7 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 	}
 	// iterate over cols
 	for x := 0; x < w; x++ {
+		// find all pieces in this col
 		positions, sizes := sa.positions[:0], sa.sizes[:0]
 		for _, piece := range pieces {
 			if piece.Orientation == Vertical && piece.Col(w) == x {
@@ -201,9 +215,11 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 				sizes = append(sizes, piece.Size)
 			}
 		}
+		// abort early if col is empty
 		if len(positions) == 0 {
 			continue
 		}
+		// figure out which squares are blocked from opposite direction
 		blocked := sa.blocked[:0]
 		i0 := x
 		for i := 0; i < h; i++ {
@@ -211,6 +227,7 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 				blocked = append(blocked, i)
 			}
 		}
+		// update blocked squares on this col
 		result := sa.blockedSquares(h, positions, sizes, blocked)
 		for _, i := range result {
 			i = i*w + x
@@ -220,26 +237,29 @@ func (sa *StaticAnalyzer) step(board *Board) bool {
 			}
 		}
 	}
+	// return true if any changes were made
 	return changed
 }
 
 func (sa *StaticAnalyzer) blockedSquares(w int, positions, sizes, blocked []int) []int {
 	n := len(positions)
-	// insertion sort positions & sizes together
+	// insertion sort the positions & sizes together
 	for i := 1; i < n; i++ {
 		for j := i; j > 0 && positions[j] < positions[j-1]; j-- {
 			positions[j], positions[j-1] = positions[j-1], positions[j]
 			sizes[j], sizes[j-1] = sizes[j-1], sizes[j]
 		}
 	}
-	// for each piece, determine its range based on w and blocked
+	// for each piece, determine its possible placements based on w and blocked
 	placements := sa.placements
 	lens := sa.lens[:n]
 	for i := 0; i < n; i++ {
 		p := positions[i]
 		s := sizes[i]
+		// init placement range to the full row
 		x0 := 0
 		x1 := w - s
+		// reduce placement range based on surrounding blocked squares
 		for _, b := range blocked {
 			if b < p {
 				x0 = maxInt(x0, b+1)
@@ -248,14 +268,17 @@ func (sa *StaticAnalyzer) blockedSquares(w int, positions, sizes, blocked []int)
 				x1 = minInt(x1, b-s)
 			}
 		}
+		// make a list of all possible piece positions
 		d := x1 - x0 + 1
 		for j := 0; j < d; j++ {
 			placements[i][j] = x0 + j
 		}
 		lens[i] = d
 	}
-	// do something like itertools.product in python
+	// do something like itertools.product in python to examine all possible
+	// placements of all the pieces together
 	count := 0
+	// zero out reused buffers
 	counts := sa.counts[:w]
 	idx := sa.idx[:n]
 	for i := range counts {

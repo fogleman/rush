@@ -8,16 +8,13 @@ import (
 	"github.com/fogleman/rush"
 )
 
-// 1237 9.586699271s
-// 1237 2.510939981s
-
 func main() {
 	best := 0
 	worst := 0
 	generator := rush.NewDefaultGenerator()
 	for i := 0; ; i++ {
 		numPieces := rand.Intn(14) + 1
-		numWalls := 3
+		numWalls := 2
 		board := generator.Generate(numPieces, numWalls)
 		solution := board.Solve()
 		if !solution.Solvable && solution.MemoSize > worst {
@@ -26,6 +23,7 @@ func main() {
 		}
 		if solution.NumMoves > best {
 			best = solution.NumMoves
+			fmt.Println(solution)
 			gg.SavePNG(fmt.Sprintf("possible-%02d.png", best), board.Render())
 		}
 	}
