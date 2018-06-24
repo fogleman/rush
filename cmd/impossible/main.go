@@ -36,10 +36,9 @@ func makeKey(board *rush.Board) Key {
 
 func main() {
 	seen := make(map[Key]bool)
-	generator := rush.NewDefaultGenerator()
 	counter := 0
 	for i := 0; ; i++ {
-		board := generator.Generate(4)
+		board := rush.NewRandomBoard(6, 6, 2, 2, 4, 0)
 		if board.Impossible() {
 			continue
 		}

@@ -15,11 +15,9 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	generator := rush.NewDefaultGenerator()
-
 	t0 := time.Now()
 	for i := 1; ; i++ {
-		board := generator.Generate(10)
+		board := rush.NewRandomBoard(6, 6, 2, 2, 10, 0)
 		start := time.Now()
 		solution := board.Solve()
 		elapsed := time.Since(start)

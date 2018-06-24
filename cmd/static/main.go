@@ -17,7 +17,6 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	generator := NewDefaultGenerator()
 	// board, err := NewBoard([]string{
 	// 	"KGGGEE",
 	// 	"K.....",
@@ -33,7 +32,7 @@ func main() {
 	start := time.Now()
 	count := 0
 	for i := 0; i < N; i++ {
-		board := generator.Generate(10)
+		board := NewRandomBoard(6, 6, 2, 2, 10, 0)
 		if board.Impossible() {
 			count++
 		}

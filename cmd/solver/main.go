@@ -31,9 +31,9 @@ func main() {
 	fmt.Println(solution)
 	fmt.Println(elapsed)
 
-	gg.SavePNG(fmt.Sprintf("solve-%02d.png", 0), board.Render())
+	gg.SavePNG(fmt.Sprintf("solver-%02d.png", 0), board.Render())
 	for i, move := range solution.Moves {
 		board.DoMove(move)
-		gg.SavePNG(fmt.Sprintf("solve-%02d.png", i+1), board.Render())
+		gg.SavePNG(fmt.Sprintf("solver-%02d.png", i+1), board.Render())
 	}
 }
