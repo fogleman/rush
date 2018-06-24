@@ -7,36 +7,36 @@ import (
 )
 
 const (
-	CellSize = 160
-	Padding  = 32
+	cellSize = 160
+	padding  = 32
 )
 
 const (
-	BackgroundColor   = "FFFFFF"
-	BoardColor        = "F2EBC7"
-	BlockedColor      = "D96D60"
-	GridLineColor     = "343642"
-	PrimaryPieceColor = "962D3E"
-	PieceColor        = "348899"
-	PieceOutlineColor = "222222"
-	LabelColor        = "222222"
-	WallColor         = "111111"
+	backgroundColor   = "FFFFFF"
+	boardColor        = "F2EBC7"
+	blockedColor      = "D96D60"
+	gridLineColor     = "343642"
+	primaryPieceColor = "962D3E"
+	pieceColor        = "348899"
+	pieceOutlineColor = "222222"
+	labelColor        = "222222"
+	wallColor         = "111111"
 )
 
-const Font = "/Library/Fonts/Arial.ttf"
+const font = "/Library/Fonts/Arial.ttf"
 
 func renderBoard(board *Board) image.Image {
-	const S = CellSize
+	const S = cellSize
 	bw := board.Width
 	bh := board.Height
 	w := bw * S
 	h := bh * S
-	dc := gg.NewContext(w+Padding*2, h+Padding*2)
-	dc.LoadFontFace(Font, 36)
-	dc.Translate(Padding, Padding)
-	dc.SetHexColor(BackgroundColor)
+	dc := gg.NewContext(w+padding*2, h+padding*2)
+	dc.LoadFontFace(font, 36)
+	dc.Translate(padding, padding)
+	dc.SetHexColor(backgroundColor)
 	dc.Clear()
-	dc.SetHexColor(BoardColor)
+	dc.SetHexColor(boardColor)
 	dc.DrawRectangle(0, 0, float64(w+1), float64(h+1))
 	dc.Fill()
 	for _, i := range board.BlockedSquares() {
@@ -44,7 +44,7 @@ func renderBoard(board *Board) image.Image {
 		y := float64(i / bw)
 		dc.DrawRectangle(x*S, y*S, S, S)
 	}
-	dc.SetHexColor(BlockedColor)
+	dc.SetHexColor(blockedColor)
 	dc.Fill()
 	p := S / 8.0
 	r := S / 32.0
@@ -52,13 +52,13 @@ func renderBoard(board *Board) image.Image {
 		x := float64(i % bw)
 		y := float64(i / bw)
 		dc.DrawRectangle(x*S, y*S, S, S)
-		dc.SetHexColor(WallColor)
+		dc.SetHexColor(wallColor)
 		dc.Fill()
 		dc.DrawCircle(x*S+p, y*S+p, r)
 		dc.DrawCircle(x*S+S-p, y*S+p, r)
 		dc.DrawCircle(x*S+p, y*S+S-p, r)
 		dc.DrawCircle(x*S+S-p, y*S+S-p, r)
-		dc.SetHexColor(BoardColor)
+		dc.SetHexColor(boardColor)
 		dc.Fill()
 	}
 	for x := S; x < w; x += S {
@@ -69,7 +69,7 @@ func renderBoard(board *Board) image.Image {
 		fy := float64(y)
 		dc.DrawLine(0, fy, float64(w), fy)
 	}
-	dc.SetHexColor(GridLineColor)
+	dc.SetHexColor(gridLineColor)
 	dc.SetLineWidth(2)
 	dc.Stroke()
 	dc.DrawRectangle(0, 0, float64(w+1), float64(h+1))
@@ -95,17 +95,17 @@ func renderBoard(board *Board) image.Image {
 		ph := dy*S + S - m*2
 		dc.DrawRoundedRectangle(px+0.5, py+0.5, pw, ph, S/8.0)
 		if i == 0 {
-			dc.SetHexColor(PrimaryPieceColor)
+			dc.SetHexColor(primaryPieceColor)
 		} else {
-			dc.SetHexColor(PieceColor)
+			dc.SetHexColor(pieceColor)
 		}
 		dc.FillPreserve()
 		dc.SetLineWidth(S / 32.0)
-		dc.SetHexColor(PieceOutlineColor)
+		dc.SetHexColor(pieceOutlineColor)
 		dc.Stroke()
 		tx := px + pw/2
 		ty := py + ph/2
-		dc.SetHexColor(LabelColor)
+		dc.SetHexColor(labelColor)
 		dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
 	}
 	return dc.Image()
