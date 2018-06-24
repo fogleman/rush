@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// Orientation indicates which direction a Piece can move. Horizontal pieces
+// can move left and right. Vertical pieces can move up and down.
 type Orientation int
 
 const (
@@ -14,6 +16,9 @@ const (
 	Vertical
 )
 
+// Piece represents a piece (a car or a truck) on the grid. Its position is
+// a zero-indexed int, 0 <= Position < W*H. Its size specifies how many cells
+// it occupies. Its orientation specifies whether it is vertical or horizontal.
 type Piece struct {
 	Position    int
 	Size        int
@@ -35,6 +40,9 @@ func (piece *Piece) Col(w int) int {
 	return piece.Position % w
 }
 
+// Move represents a move to make on the board. Piece indicates which piece
+// (by index) to move and Steps is a non-zero positive or negative int that
+// specifies how many cells to move the piece.
 type Move struct {
 	Piece int
 	Steps int
@@ -47,6 +55,10 @@ func (move Move) AbsSteps() int {
 	return move.Steps
 }
 
+// Board represents the complete puzzle state. The size of the grid, the
+// placement, size, orientation of the pieces. The placement of walls
+// (immovable obstacles). Which cells are occupied, either by a piece or a
+// wall.
 type Board struct {
 	Width    int
 	Height   int
