@@ -75,17 +75,29 @@ func NewEmptyBoard(w, h int) *Board {
 	return &Board{w, h, nil, nil, occupied, memoKey}
 }
 
-func (board *Board) Copy() *Board {
-	w := board.Width
-	h := board.Height
-	pieces := make([]Piece, len(board.Pieces))
-	walls := make([]int, len(board.Walls))
-	occupied := make([]bool, len(board.occupied))
-	memoKey := board.memoKey
-	copy(pieces, board.Pieces)
-	copy(walls, board.Walls)
-	copy(occupied, board.occupied)
-	return &Board{w, h, pieces, walls, occupied, memoKey}
+func NewRandomBoard(w, h, primaryRow, primarySize, numPieces, numWalls int) *Board {
+	board := NewEmptyBoard(w, h)
+	board.AddPiece(Piece{primaryRow * w, primarySize, Horizontal})
+	for i := 1; i < numPieces; i++ {
+		board.mutateAddPiece(100)
+	}
+	for i := 0; i < numWalls; i++ {
+		board.mutateAddWall(100)
+	}
+	return board
+}
+
+func NewRandomSolvedBoard(w, h, primaryRow, primarySize, numPieces, numWalls int) *Board {
+	board := NewEmptyBoard(w, h)
+	position := (primaryRow+1)*w - primarySize
+	board.AddPiece(Piece{position, primarySize, Horizontal})
+	for i := 1; i < numPieces; i++ {
+		board.mutateAddPiece(100)
+	}
+	for i := 0; i < numWalls; i++ {
+		board.mutateAddWall(100)
+	}
+	return board
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -180,6 +192,19 @@ func (board *Board) String() string {
 		rows[y] = strings.Join(grid[i:i+w], "")
 	}
 	return strings.Join(rows, "\n")
+}
+
+func (board *Board) Copy() *Board {
+	w := board.Width
+	h := board.Height
+	pieces := make([]Piece, len(board.Pieces))
+	walls := make([]int, len(board.Walls))
+	occupied := make([]bool, len(board.occupied))
+	memoKey := board.memoKey
+	copy(pieces, board.Pieces)
+	copy(walls, board.Walls)
+	copy(occupied, board.occupied)
+	return &Board{w, h, pieces, walls, occupied, memoKey}
 }
 
 func (board *Board) Validate() error {
@@ -468,9 +493,9 @@ func (board *Board) mutateMakeMove() UndoFunc {
 }
 
 func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
-	if len(board.Pieces) >= 10 {
-		return nil
-	}
+	// if len(board.Pieces) >= 10 {
+	// 	return nil
+	// }
 	piece, ok := board.randomPiece(maxAttempts)
 	if !ok {
 		return nil
@@ -483,9 +508,9 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
-	if len(board.Walls) >= 2 {
-		return nil
-	}
+	// if len(board.Walls) >= 3 {
+	// 	return nil
+	// }
 	wall, ok := board.randomWall(maxAttempts)
 	if !ok {
 		return nil

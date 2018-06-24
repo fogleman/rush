@@ -1,13 +1,5 @@
 package rush
 
-type Solver struct {
-	board  *Board
-	target int
-	memo   *Memo
-	path   []Move
-	moves  [][]Move
-}
-
 type Solution struct {
 	Solvable bool
 	Moves    []Move
@@ -16,6 +8,14 @@ type Solution struct {
 	Depth    int
 	MemoSize int
 	MemoHits uint64
+}
+
+type Solver struct {
+	board  *Board
+	target int
+	memo   *Memo
+	path   []Move
+	moves  [][]Move
 }
 
 func NewSolver(board *Board) *Solver {
@@ -62,6 +62,7 @@ func (solver *Solver) search(depth, maxDepth int) bool {
 		solved := solver.search(depth+1, maxDepth)
 		board.UndoMove(move)
 		if solved {
+			solver.memo.Set(board.MemoKey(), height-1)
 			solver.path[depth] = move
 			return true
 		}
@@ -69,20 +70,21 @@ func (solver *Solver) search(depth, maxDepth int) bool {
 	return false
 }
 
-func (solver *Solver) Solve() Solution {
+func (solver *Solver) solve(skipChecks bool) Solution {
 	board := solver.board
 	memo := solver.memo
 
-	if err := board.Validate(); err != nil {
-		return Solution{}
+	if !skipChecks {
+		if err := board.Validate(); err != nil {
+			return Solution{}
+		}
+		if board.Impossible() {
+			return Solution{}
+		}
 	}
 
 	if solver.isSolved() {
 		return Solution{Solvable: true}
-	}
-
-	if board.Impossible() {
-		return Solution{}
 	}
 
 	previousMemoSize := 0
@@ -96,7 +98,7 @@ func (solver *Solver) Solve() Solution {
 			for _, move := range moves {
 				steps += move.AbsSteps()
 			}
-			return Solution{
+			result := Solution{
 				Solvable: true,
 				Moves:    moves,
 				NumMoves: len(moves),
@@ -105,9 +107,10 @@ func (solver *Solver) Solve() Solution {
 				MemoSize: memo.Size(),
 				MemoHits: memo.Hits(),
 			}
+			return result
 		}
 		memoSize := memo.Size()
-		if i > cutoff && memoSize == previousMemoSize {
+		if !skipChecks && i > cutoff && memoSize == previousMemoSize {
 			return Solution{
 				Depth:    i,
 				MemoSize: memo.Size(),
@@ -116,4 +119,8 @@ func (solver *Solver) Solve() Solution {
 		}
 		previousMemoSize = memoSize
 	}
+}
+
+func (solver *Solver) Solve() Solution {
+	return solver.solve(false)
 }

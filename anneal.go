@@ -13,6 +13,7 @@ func anneal(state *Board, maxTemp, minTemp float64, steps int) *Board {
 	state = state.Copy()
 	bestState := state.Copy()
 	bestEnergy := state.Energy()
+	bestTime := start
 	previousEnergy := bestEnergy
 	rate := steps / 1000
 	for step := 0; step < steps; step++ {
@@ -31,7 +32,12 @@ func anneal(state *Board, maxTemp, minTemp float64, steps int) *Board {
 			if energy < bestEnergy {
 				bestEnergy = energy
 				bestState = state.Copy()
+				bestTime = time.Now()
 			}
+		}
+		if time.Since(bestTime).Seconds() > 15 {
+			fmt.Println()
+			return bestState
 		}
 	}
 	showProgress(steps, steps, minTemp, bestEnergy, time.Since(start).Seconds())

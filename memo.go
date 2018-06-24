@@ -36,3 +36,7 @@ func (memo *Memo) Add(key *MemoKey, depth int) bool {
 	memo.data[*key] = depth
 	return true
 }
+
+func (memo *Memo) Set(key *MemoKey, depth int) {
+	memo.data[*key] = depth
+}

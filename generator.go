@@ -1,5 +1,7 @@
 package rush
 
+import "fmt"
+
 // TODO: piece pool / bag - in use / out of use pieces?
 
 type Generator struct {
@@ -40,6 +42,12 @@ func (g *Generator) Generate(iterations int) *Board {
 	// }
 
 	board = anneal(board, 20, 1, iterations)
+
+	before := NewSolver(board).Solve().NumMoves
+	board = NewUnsolver(board).Unsolve()
+	after := NewSolver(board).Solve().NumMoves
+
+	fmt.Println(before, after)
 
 	return board
 }
