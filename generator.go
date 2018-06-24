@@ -2,8 +2,6 @@ package rush
 
 import "fmt"
 
-// TODO: piece pool / bag - in use / out of use pieces?
-
 type Generator struct {
 	Width       int
 	Height      int
@@ -26,27 +24,13 @@ func (g *Generator) Generate(iterations int) *Board {
 	// place the primary piece
 	board.AddPiece(Piece{g.PrimaryRow * g.Width, g.PrimarySize, Horizontal})
 
-	// // hill climb
-	// score := -board.Energy()
-	// for i := 0; i < iterations; i++ {
-	// 	undo := board.Mutate()
-	// 	newScore := -board.Energy()
-	// 	if newScore <= score {
-	// 		undo()
-	// 	} else {
-	// 		score = newScore
-	// 		fmt.Println(board)
-	// 		fmt.Println(i, score)
-	// 		fmt.Println()
-	// 	}
-	// }
-
+	// simulated annealing
 	board = anneal(board, 20, 1, iterations)
 
+	// unsolve step
 	before := NewSolver(board).Solve().NumMoves
 	board = NewUnsolver(board).Unsolve()
 	after := NewSolver(board).Solve().NumMoves
-
 	fmt.Println(before, after)
 
 	return board

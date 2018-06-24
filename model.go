@@ -87,19 +87,6 @@ func NewRandomBoard(w, h, primaryRow, primarySize, numPieces, numWalls int) *Boa
 	return board
 }
 
-func NewRandomSolvedBoard(w, h, primaryRow, primarySize, numPieces, numWalls int) *Board {
-	board := NewEmptyBoard(w, h)
-	position := (primaryRow+1)*w - primarySize
-	board.AddPiece(Piece{position, primarySize, Horizontal})
-	for i := 1; i < numPieces; i++ {
-		board.mutateAddPiece(100)
-	}
-	for i := 0; i < numWalls; i++ {
-		board.mutateAddWall(100)
-	}
-	return board
-}
-
 func NewBoard(desc []string) (*Board, error) {
 	// determine board size
 	h := len(desc)
