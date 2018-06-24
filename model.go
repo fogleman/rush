@@ -75,6 +75,19 @@ func NewEmptyBoard(w, h int) *Board {
 	return &Board{w, h, nil, nil, occupied, memoKey}
 }
 
+func (board *Board) Copy() *Board {
+	w := board.Width
+	h := board.Height
+	pieces := make([]Piece, len(board.Pieces))
+	walls := make([]int, len(board.Walls))
+	occupied := make([]bool, len(board.occupied))
+	memoKey := board.memoKey
+	copy(pieces, board.Pieces)
+	copy(walls, board.Walls)
+	copy(occupied, board.occupied)
+	return &Board{w, h, pieces, walls, occupied, memoKey}
+}
+
 func NewBoard(desc []string) (*Board, error) {
 	// determine board size
 	h := len(desc)
@@ -404,10 +417,20 @@ func (board *Board) BlockedSquares() []int {
 
 // random board mutation below
 
+func (board *Board) Energy() float64 {
+	solution := board.Solve()
+	if !solution.Solvable {
+		return 1
+	}
+	e := float64(solution.NumMoves)
+	e += float64(solution.NumSteps) / 100
+	return -e
+}
+
 type UndoFunc func()
 
 func (board *Board) Mutate() UndoFunc {
-	const maxAttempts = 10
+	const maxAttempts = 100
 	for {
 		var undo UndoFunc
 		switch rand.Intn(7 + 3) {
@@ -445,6 +468,9 @@ func (board *Board) mutateMakeMove() UndoFunc {
 }
 
 func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
+	if len(board.Pieces) >= 10 {
+		return nil
+	}
 	piece, ok := board.randomPiece(maxAttempts)
 	if !ok {
 		return nil
@@ -457,6 +483,9 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
+	if len(board.Walls) >= 2 {
+		return nil
+	}
 	wall, ok := board.randomWall(maxAttempts)
 	if !ok {
 		return nil
