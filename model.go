@@ -297,6 +297,7 @@ func (board *Board) AddWall(i int) bool {
 }
 
 func (board *Board) RemovePiece(i int) {
+	board.setOccupied(board.Pieces[i], false)
 	a := board.Pieces
 	a[i] = a[len(a)-1]
 	a = a[:len(a)-1]
@@ -304,6 +305,7 @@ func (board *Board) RemovePiece(i int) {
 }
 
 func (board *Board) RemoveWall(i int) {
+	board.occupied[board.Walls[i]] = false
 	a := board.Walls
 	a[i] = a[len(a)-1]
 	a = a[:len(a)-1]
@@ -405,29 +407,35 @@ func (board *Board) BlockedSquares() []int {
 type UndoFunc func()
 
 func (board *Board) Mutate() UndoFunc {
-	const maxAttempts = 100
-	switch rand.Intn(6) {
-	case 0:
-		return board.mutateAddPiece(maxAttempts)
-	case 1:
-		return board.mutateAddWall(maxAttempts)
-	case 2:
-		return board.mutateRemovePiece()
-	case 3:
-		return board.mutateRemoveWall()
-	case 4:
-		return board.mutateRemoveAndAddPiece(maxAttempts)
-	case 5:
-		return board.mutateRemoveAndAddWall(maxAttempts)
+	const maxAttempts = 10
+	for {
+		var undo UndoFunc
+		switch rand.Intn(7 + 3) {
+		case 0:
+			undo = board.mutateAddPiece(maxAttempts)
+		case 1:
+			undo = board.mutateAddWall(maxAttempts)
+		case 2:
+			undo = board.mutateRemovePiece()
+		case 3:
+			undo = board.mutateRemoveWall()
+		case 4:
+			undo = board.mutateRemoveAndAddPiece(maxAttempts)
+		case 5:
+			undo = board.mutateRemoveAndAddWall(maxAttempts)
+		default:
+			undo = board.mutateMakeMove()
+		}
+		if undo != nil {
+			return undo
+		}
 	}
-	return func() {}
 }
 
 func (board *Board) mutateMakeMove() UndoFunc {
 	moves := board.Moves(nil)
 	if len(moves) == 0 {
-		return func() {
-		}
+		return nil
 	}
 	move := moves[rand.Intn(len(moves))]
 	board.DoMove(move)
@@ -439,8 +447,7 @@ func (board *Board) mutateMakeMove() UndoFunc {
 func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 	piece, ok := board.randomPiece(maxAttempts)
 	if !ok {
-		return func() {
-		}
+		return nil
 	}
 	i := len(board.Pieces)
 	board.AddPiece(piece)
@@ -452,8 +459,7 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
 	wall, ok := board.randomWall(maxAttempts)
 	if !ok {
-		return func() {
-		}
+		return nil
 	}
 	i := len(board.Walls)
 	board.AddWall(wall)
@@ -463,11 +469,11 @@ func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateRemovePiece() UndoFunc {
-	if len(board.Pieces) == 0 {
-		return func() {
-		}
+	// never remove the primary piece
+	if len(board.Pieces) < 2 {
+		return nil
 	}
-	i := rand.Intn(len(board.Pieces))
+	i := rand.Intn(len(board.Pieces)-1) + 1
 	piece := board.Pieces[i]
 	board.RemovePiece(i)
 	return func() {
@@ -477,8 +483,7 @@ func (board *Board) mutateRemovePiece() UndoFunc {
 
 func (board *Board) mutateRemoveWall() UndoFunc {
 	if len(board.Walls) == 0 {
-		return func() {
-		}
+		return nil
 	}
 	i := rand.Intn(len(board.Walls))
 	wall := board.Walls[i]
@@ -490,7 +495,13 @@ func (board *Board) mutateRemoveWall() UndoFunc {
 
 func (board *Board) mutateRemoveAndAddPiece(maxAttempts int) UndoFunc {
 	undoRemove := board.mutateRemovePiece()
+	if undoRemove == nil {
+		return nil
+	}
 	undoAdd := board.mutateAddPiece(maxAttempts)
+	if undoAdd == nil {
+		return undoRemove
+	}
 	return func() {
 		undoAdd()
 		undoRemove()
@@ -499,7 +510,13 @@ func (board *Board) mutateRemoveAndAddPiece(maxAttempts int) UndoFunc {
 
 func (board *Board) mutateRemoveAndAddWall(maxAttempts int) UndoFunc {
 	undoRemove := board.mutateRemoveWall()
+	if undoRemove == nil {
+		return nil
+	}
 	undoAdd := board.mutateAddWall(maxAttempts)
+	if undoAdd == nil {
+		return undoRemove
+	}
 	return func() {
 		undoAdd()
 		undoRemove()
