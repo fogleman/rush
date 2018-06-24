@@ -3,6 +3,7 @@ package rush
 import (
 	"fmt"
 	"image"
+	"math/rand"
 	"sort"
 	"strings"
 )
@@ -295,6 +296,20 @@ func (board *Board) AddWall(i int) bool {
 	return true
 }
 
+func (board *Board) RemovePiece(i int) {
+	a := board.Pieces
+	a[i] = a[len(a)-1]
+	a = a[:len(a)-1]
+	board.Pieces = a
+}
+
+func (board *Board) RemoveWall(i int) {
+	a := board.Walls
+	a[i] = a[len(a)-1]
+	a = a[:len(a)-1]
+	board.Walls = a
+}
+
 func (board *Board) Target() int {
 	w := board.Width
 	piece := board.Pieces[0]
@@ -383,4 +398,144 @@ func (board *Board) Impossible() bool {
 
 func (board *Board) BlockedSquares() []int {
 	return theStaticAnalyzer.BlockedSquares(board)
+}
+
+// random board mutation below
+
+type UndoFunc func()
+
+func (board *Board) Mutate() UndoFunc {
+	const maxAttempts = 100
+	switch rand.Intn(6) {
+	case 0:
+		return board.mutateAddPiece(maxAttempts)
+	case 1:
+		return board.mutateAddWall(maxAttempts)
+	case 2:
+		return board.mutateRemovePiece()
+	case 3:
+		return board.mutateRemoveWall()
+	case 4:
+		return board.mutateRemoveAndAddPiece(maxAttempts)
+	case 5:
+		return board.mutateRemoveAndAddWall(maxAttempts)
+	}
+	return func() {}
+}
+
+func (board *Board) mutateMakeMove() UndoFunc {
+	moves := board.Moves(nil)
+	if len(moves) == 0 {
+		return func() {
+		}
+	}
+	move := moves[rand.Intn(len(moves))]
+	board.DoMove(move)
+	return func() {
+		board.UndoMove(move)
+	}
+}
+
+func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
+	piece, ok := board.randomPiece(maxAttempts)
+	if !ok {
+		return func() {
+		}
+	}
+	i := len(board.Pieces)
+	board.AddPiece(piece)
+	return func() {
+		board.RemovePiece(i)
+	}
+}
+
+func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
+	wall, ok := board.randomWall(maxAttempts)
+	if !ok {
+		return func() {
+		}
+	}
+	i := len(board.Walls)
+	board.AddWall(wall)
+	return func() {
+		board.RemoveWall(i)
+	}
+}
+
+func (board *Board) mutateRemovePiece() UndoFunc {
+	if len(board.Pieces) == 0 {
+		return func() {
+		}
+	}
+	i := rand.Intn(len(board.Pieces))
+	piece := board.Pieces[i]
+	board.RemovePiece(i)
+	return func() {
+		board.AddPiece(piece)
+	}
+}
+
+func (board *Board) mutateRemoveWall() UndoFunc {
+	if len(board.Walls) == 0 {
+		return func() {
+		}
+	}
+	i := rand.Intn(len(board.Walls))
+	wall := board.Walls[i]
+	board.RemoveWall(i)
+	return func() {
+		board.AddWall(wall)
+	}
+}
+
+func (board *Board) mutateRemoveAndAddPiece(maxAttempts int) UndoFunc {
+	undoRemove := board.mutateRemovePiece()
+	undoAdd := board.mutateAddPiece(maxAttempts)
+	return func() {
+		undoAdd()
+		undoRemove()
+	}
+}
+
+func (board *Board) mutateRemoveAndAddWall(maxAttempts int) UndoFunc {
+	undoRemove := board.mutateRemoveWall()
+	undoAdd := board.mutateAddWall(maxAttempts)
+	return func() {
+		undoAdd()
+		undoRemove()
+	}
+}
+
+func (board *Board) randomPiece(maxAttempts int) (Piece, bool) {
+	w := board.Width
+	h := board.Height
+	for i := 0; i < maxAttempts; i++ {
+		size := 2 + rand.Intn(2) // TODO: weighted?
+		orientation := Orientation(rand.Intn(2))
+		var x, y int
+		if orientation == Vertical {
+			x = rand.Intn(w)
+			y = rand.Intn(h - size + 1)
+		} else {
+			x = rand.Intn(w - size + 1)
+			y = rand.Intn(h)
+		}
+		position := y*w + x
+		piece := Piece{position, size, orientation}
+		if !board.isOccupied(piece) {
+			return piece, true
+		}
+	}
+	return Piece{}, false
+}
+
+func (board *Board) randomWall(maxAttempts int) (int, bool) {
+	n := board.Width * board.Height
+	for i := 0; i < maxAttempts; i++ {
+		p := rand.Intn(n)
+		if !board.occupied[p] {
+			return p, true
+		}
+	}
+	return 0, false
 }
