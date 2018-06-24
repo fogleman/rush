@@ -20,7 +20,8 @@ func anneal(state *Board, maxTemp, minTemp float64, steps int) *Board {
 		pct := float64(step) / float64(steps-1)
 		temp := maxTemp * math.Exp(factor*pct)
 		if step%rate == 0 {
-			showProgress(step, steps, temp, bestEnergy, time.Since(start).Seconds())
+			showAnnealProgress(
+				step, steps, temp, bestEnergy, time.Since(start).Seconds())
 		}
 		undo := state.Mutate()
 		energy := state.Energy()
@@ -40,12 +41,13 @@ func anneal(state *Board, maxTemp, minTemp float64, steps int) *Board {
 			return bestState
 		}
 	}
-	showProgress(steps, steps, minTemp, bestEnergy, time.Since(start).Seconds())
+	showAnnealProgress(
+		steps, steps, minTemp, bestEnergy, time.Since(start).Seconds())
 	fmt.Println()
 	return bestState
 }
 
-func showProgress(i, n int, t, e, d float64) {
+func showAnnealProgress(i, n int, t, e, d float64) {
 	pct := int(100 * float64(i) / float64(n))
 	fmt.Printf("  %3d%% [", pct)
 	for p := 0; p < 100; p += 3 {
