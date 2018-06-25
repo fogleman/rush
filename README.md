@@ -122,6 +122,14 @@ After generating a puzzle, the `Unsolver` is invoked to see if the puzzle can be
 
 As the puzzle needs to be solved after every iteration during annealing, generating puzzles isn't very fast. I'm still looking into other ways of generating interesting puzzles.
 
+### Static Analysis
+
+The red cells shown in the example below will always be occupied, no matter what sequence of moves are made. This is determined via static analysis. This algorithm can quickly weed out impossible puzzles before performing a more expensive search algorithm. (The search algorithm must explore all reachable states before concluding that the puzzle cannot be solved.) The static analysis doesn't catch every impossible puzzle, of course.
+
+The static analysis algorithm is well-documented. See [static.go](https://github.com/fogleman/rush/blob/master/static.go) to learn more!
+
+![Static Analysis Example](https://i.imgur.com/ZHs3XHp.png)
+
 ### Sample Puzzles
 
 Below are several sample puzzles created by the simulated annealing algorithm. Their solutions are also provided. Some of these had constraints on the number or size of pieces that could be used.
