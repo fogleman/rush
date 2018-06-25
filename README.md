@@ -104,6 +104,8 @@ In the example below, the input puzzle (left) is already solved. The unsolver mo
 
 ![Unsolving Example](https://i.imgur.com/QNSKKU5.png)
 
+<p align="center"><i>The Unsolver worked backwards to transform an already-solved puzzle into one that requires 45 moves to solve</i></p>
+
 ### Generating
 
 The `Generator` creates puzzles via [simulated annealing](https://en.wikipedia.org/wiki/Simulated_annealing). The possible mutations are:
@@ -129,6 +131,8 @@ The red cells shown in the example below will always be occupied, no matter what
 The static analysis algorithm is well-documented. See [static.go](https://github.com/fogleman/rush/blob/master/static.go) to learn more!
 
 ![Static Analysis Example](https://i.imgur.com/ZHs3XHp.png)
+
+<p align="center"><i>The static analysis algorithm quickly determined that this puzzle cannot be solved</i></p>
 
 ### Sample Puzzles
 
