@@ -20,7 +20,7 @@ The code is written in [Go](https://golang.org/).
 
 ### Example Puzzle Solution
 
-The solver found a solution to this puzzle in 75 milliseconds. It requires 50 moves (82 steps).
+The solver found a solution to this puzzle in 75 milliseconds. It requires 50 moves (82 steps). Only 3,519 distinct states were found while searching this puzzle. But the memoization cache was queried 595,093 times.
 
 ![Example](https://i.imgur.com/eWnPtLo.gif)
 
