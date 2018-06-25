@@ -10,6 +10,12 @@ import (
 )
 
 const (
+	showBlockedSquares = true
+	showPieceLabels    = true
+	showSolution       = false
+)
+
+const (
 	cellSize = 160
 	padding  = 32
 )
@@ -35,7 +41,12 @@ func renderBoard(board *Board) image.Image {
 	bh := board.Height
 	w := bw * S
 	h := bh * S
-	dc := gg.NewContext(w+padding*2, h+padding*2+88)
+	iw := w + padding*2
+	ih := h + padding*2
+	if showSolution {
+		ih += 88
+	}
+	dc := gg.NewContext(iw, ih)
 	dc.LoadFontFace(labelFont, 36)
 	dc.Translate(padding, padding)
 	dc.SetHexColor(backgroundColor)
@@ -43,13 +54,15 @@ func renderBoard(board *Board) image.Image {
 	dc.SetHexColor(boardColor)
 	dc.DrawRectangle(0, 0, float64(w+1), float64(h+1))
 	dc.Fill()
-	for _, i := range board.BlockedSquares() {
-		x := float64(i % bw)
-		y := float64(i / bw)
-		dc.DrawRectangle(x*S, y*S, S, S)
+	if showBlockedSquares {
+		for _, i := range board.BlockedSquares() {
+			x := float64(i % bw)
+			y := float64(i / bw)
+			dc.DrawRectangle(x*S, y*S, S, S)
+		}
+		dc.SetHexColor(blockedColor)
+		dc.Fill()
 	}
-	dc.SetHexColor(blockedColor)
-	dc.Fill()
 	p := S / 8.0
 	r := S / 32.0
 	for _, i := range board.Walls {
@@ -107,30 +120,35 @@ func renderBoard(board *Board) image.Image {
 		dc.SetLineWidth(S / 32.0)
 		dc.SetHexColor(pieceOutlineColor)
 		dc.Stroke()
-		tx := px + pw/2
-		ty := py + ph/2
-		dc.SetHexColor(labelColor)
-		dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
+		if showPieceLabels {
+			tx := px + pw/2
+			ty := py + ph/2
+			dc.SetHexColor(labelColor)
+			dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
+		}
 	}
 
-	// draw footer
-	x := float64(w) / 2
-	y := float64(h) + padding*0.75
-	footer := ""
-	solution := board.Solve()
-	if solution.Solvable {
-		moveStrings := make([]string, len(solution.Moves))
-		for i, move := range solution.Moves {
-			moveStrings[i] = move.String()
+	if showSolution {
+		x := float64(w) / 2
+		y := float64(h) + padding*0.75
+		footer := ""
+		solution := board.Solve()
+		if solution.Solvable {
+			moveStrings := make([]string, len(solution.Moves))
+			for i, move := range solution.Moves {
+				moveStrings[i] = move.String()
+			}
+			footer = fmt.Sprintf("%s (%d moves)",
+				strings.Join(moveStrings, " "), solution.NumMoves)
 		}
-		footer = fmt.Sprintf("%s (%d moves)", strings.Join(moveStrings, " "), solution.NumMoves)
+		dc.LoadFontFace(footerFont, 24)
+		var tw float64
+		for _, line := range dc.WordWrap(footer, float64(w)) {
+			w, _ := dc.MeasureString(line)
+			tw = math.Max(tw, w)
+		}
+		dc.DrawStringWrapped(footer, x, y, 0.5, 0, tw, 1.5, gg.AlignLeft)
 	}
-	dc.LoadFontFace(footerFont, 24)
-	var tw float64
-	for _, line := range dc.WordWrap(footer, float64(w)) {
-		w, _ := dc.MeasureString(line)
-		tw = math.Max(tw, w)
-	}
-	dc.DrawStringWrapped(footer, x, y, 0.5, 0, tw, 1.5, gg.AlignLeft)
+
 	return dc.Image()
 }
