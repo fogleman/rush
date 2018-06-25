@@ -5,10 +5,12 @@ You may also know this game from one of its iOS implementations, such as [Unbloc
 
 The code is written in [Go](https://golang.org/).
 
+![Examples](https://i.imgur.com/YlT8Y39.png)
+
 ### Features
 
 - Can solve puzzles
-- Can generate puzzles
+- Can generate puzzles (such as those shown above)
 - Supports arbitrarily-sized boards
 - Supports arbitrarily-sized pieces
 - Supports "walls" (immovable obstacles)
