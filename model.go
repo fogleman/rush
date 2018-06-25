@@ -512,7 +512,7 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
-	// if len(board.Walls) >= 0 {
+	// if len(board.Walls) >= 1 {
 	// 	return nil
 	// }
 	wall, ok := board.randomWall(maxAttempts)

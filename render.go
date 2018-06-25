@@ -1,7 +1,10 @@
 package rush
 
 import (
+	"fmt"
 	"image"
+	"math"
+	"strings"
 
 	"github.com/fogleman/gg"
 )
@@ -23,7 +26,8 @@ const (
 	wallColor         = "111111"
 )
 
-const font = "/Library/Fonts/Arial.ttf"
+const labelFont = "/Library/Fonts/Arial.ttf"
+const footerFont = "/System/Library/Fonts/Menlo.ttc"
 
 func renderBoard(board *Board) image.Image {
 	const S = cellSize
@@ -31,8 +35,8 @@ func renderBoard(board *Board) image.Image {
 	bh := board.Height
 	w := bw * S
 	h := bh * S
-	dc := gg.NewContext(w+padding*2, h+padding*2)
-	dc.LoadFontFace(font, 36)
+	dc := gg.NewContext(w+padding*2, h+padding*2+88)
+	dc.LoadFontFace(labelFont, 36)
 	dc.Translate(padding, padding)
 	dc.SetHexColor(backgroundColor)
 	dc.Clear()
@@ -108,5 +112,25 @@ func renderBoard(board *Board) image.Image {
 		dc.SetHexColor(labelColor)
 		dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
 	}
+
+	// draw footer
+	x := float64(w) / 2
+	y := float64(h) + padding*0.75
+	footer := ""
+	solution := board.Solve()
+	if solution.Solvable {
+		moveStrings := make([]string, len(solution.Moves))
+		for i, move := range solution.Moves {
+			moveStrings[i] = move.String()
+		}
+		footer = fmt.Sprintf("%s (%d moves)", strings.Join(moveStrings, " "), solution.NumMoves)
+	}
+	dc.LoadFontFace(footerFont, 24)
+	var tw float64
+	for _, line := range dc.WordWrap(footer, float64(w)) {
+		w, _ := dc.MeasureString(line)
+		tw = math.Max(tw, w)
+	}
+	dc.DrawStringWrapped(footer, x, y, 0.5, 0, tw, 1.5, gg.AlignLeft)
 	return dc.Image()
 }

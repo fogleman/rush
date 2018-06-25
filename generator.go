@@ -25,7 +25,7 @@ func (g *Generator) Generate(iterations int) *Board {
 	board.AddPiece(Piece{g.PrimaryRow * g.Width, g.PrimarySize, Horizontal})
 
 	// simulated annealing
-	board = anneal(board, 20, 1, iterations)
+	board = anneal(board, 20, 0.5, iterations)
 
 	// unsolve step
 	before := NewSolver(board).Solve().NumMoves
