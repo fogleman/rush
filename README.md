@@ -92,13 +92,31 @@ cd ~/go/src/github.com/fogleman/rush
 go run cmd/example/main.go
 ```
 
+### Solving
+
+The `Solver` works via an [iterative deepening depth-first search](https://en.wikipedia.org/wiki/Iterative_deepening_depth-first_search) with [memoization](https://en.wikipedia.org/wiki/Memoization) to avoid searching the same position multiple times. Before searching, the `StaticAnalyzer` is invoked to ensure that no cells between the primary piece and its exit are permanently blocked.
+
 ### Unsolving
 
-The unsolver takes any existing solvable configuration and tries to make it "harder" (require more moves) by finding some other reachable state that is further from the win.
+The `Unsolver` takes any existing solvable configuration and tries to make it "harder" (require more moves) by finding some other reachable state that is further from the win.
 
 In the example below, the input puzzle (left) is already solved. The unsolver moves the pieces around and produces a puzzle that requires 45 moves to solve (right). Note that these puzzles have the same pieces.
 
 ![Unsolving Example](https://i.imgur.com/QNSKKU5.png)
+
+### Generating
+
+The `Generator` creates puzzles via [simulated annealing](https://en.wikipedia.org/wiki/Simulated_annealing). The possible mutations are:
+
+- make a random valid move
+- add a piece
+- remove a piece
+- remove & add (move) a piece
+- add a wall
+- remove a wall
+- remove & add (move) a wall
+
+The score is based on how many moves and how many steps are required to solve the puzzle. Other scoring functions could conceivably generate "interesting" puzzles based on some other metric.
 
 ### 7x7 Puzzle
 
