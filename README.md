@@ -100,7 +100,7 @@ The `Solver` works via an [iterative deepening depth-first search](https://en.wi
 
 The `Unsolver` takes any existing solvable configuration and tries to make it "harder" (require more moves) by finding some other reachable state that is further from the win.
 
-In the example below, the input puzzle (left) is already solved. The unsolver moves the pieces around and produces a puzzle that requires 45 moves to solve (right). Note that these puzzles have the same pieces.
+In the example below, the input puzzle (left) is already solved. The unsolver moves the pieces around (with valid moves only) and produces a puzzle that requires 45 moves to solve (right). Note that these puzzles have the same pieces.
 
 ![Unsolving Example](https://i.imgur.com/QNSKKU5.png)
 
