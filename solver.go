@@ -88,6 +88,7 @@ func (solver *Solver) solve(skipChecks bool) Solution {
 	}
 
 	previousMemoSize := 0
+	noChange := 0
 	cutoff := board.Width - board.Pieces[0].Size
 	for i := 1; ; i++ {
 		solver.path = make([]Move, i)
@@ -110,7 +111,12 @@ func (solver *Solver) solve(skipChecks bool) Solution {
 			return result
 		}
 		memoSize := memo.Size()
-		if !skipChecks && i > cutoff && memoSize == previousMemoSize {
+		if memoSize == previousMemoSize {
+			noChange++
+		} else {
+			noChange = 0
+		}
+		if !skipChecks && noChange > cutoff {
 			return Solution{
 				Depth:    i,
 				MemoSize: memo.Size(),

@@ -202,6 +202,14 @@ func (board *Board) Copy() *Board {
 	return &Board{w, h, pieces, walls, occupied, memoKey}
 }
 
+func (board *Board) SortPieces() {
+	a := board.Pieces[1:]
+	sort.Slice(a, func(i, j int) bool {
+		return a[i].Position < a[j].Position
+	})
+	board.memoKey = MakeMemoKey(board.Pieces)
+}
+
 func (board *Board) Validate() error {
 	w := board.Width
 	h := board.Height
@@ -331,10 +339,11 @@ func (board *Board) AddWall(i int) bool {
 
 func (board *Board) RemovePiece(i int) {
 	board.setOccupied(board.Pieces[i], false)
-	a := board.Pieces
-	a[i] = a[len(a)-1]
-	a = a[:len(a)-1]
-	board.Pieces = a
+	j := len(board.Pieces) - 1
+	board.Pieces[i] = board.Pieces[j]
+	board.memoKey[i] = board.Pieces[i].Position
+	board.Pieces = board.Pieces[:j]
+	board.memoKey[j] = 0
 }
 
 func (board *Board) RemoveWall(i int) {
@@ -488,7 +497,7 @@ func (board *Board) mutateMakeMove() UndoFunc {
 }
 
 func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
-	// if len(board.Pieces) >= 10 {
+	// if len(board.Pieces) >= 5 {
 	// 	return nil
 	// }
 	piece, ok := board.randomPiece(maxAttempts)
@@ -503,7 +512,7 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
-	// if len(board.Walls) >= 3 {
+	// if len(board.Walls) >= 0 {
 	// 	return nil
 	// }
 	wall, ok := board.randomWall(maxAttempts)

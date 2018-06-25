@@ -11,7 +11,7 @@ type Unsolver struct {
 func NewUnsolver(board *Board) *Unsolver {
 	solver := NewSolver(board)
 	memo := NewMemo()
-	return &Unsolver{board, solver, memo, 0, board}
+	return &Unsolver{board, solver, memo, 0, board.Copy()}
 }
 
 func (unsolver *Unsolver) search(numMoves int) {
