@@ -69,10 +69,11 @@ fmt.Printf(" # moves: %d\n", solution.NumMoves)
 fmt.Printf(" # steps: %d\n", solution.NumSteps)
 
 // print out moves to solve puzzle
-for _, move := range solution.Moves {
-	fmt.Printf("%s%+d, ", move.Label(), move.Steps)
+moveStrings := make([]string, len(solution.Moves))
+for i, move := range solution.Moves {
+	moveStrings[i] = move.String()
 }
-fmt.Println()
+fmt.Println(strings.Join(moveStrings, ", "))
 
 // solvable: true
 //  # moves: 49
