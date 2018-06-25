@@ -60,6 +60,10 @@ func (move Move) Label() string {
 	return string('A' + move.Piece)
 }
 
+func (move Move) String() string {
+	return fmt.Sprintf("%s%+d", move.Label(), move.Steps)
+}
+
 // Board represents the complete puzzle state. The size of the grid, the
 // placement, size, orientation of the pieces. The placement of walls
 // (immovable obstacles). Which cells are occupied, either by a piece or a
