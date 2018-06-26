@@ -30,7 +30,7 @@ func (solver *Solver) isSolved() bool {
 	return solver.board.Pieces[0].Position == solver.target
 }
 
-func (solver *Solver) search(depth, maxDepth int) bool {
+func (solver *Solver) search(depth, maxDepth, previousPiece int) bool {
 	height := maxDepth - depth
 	if height == 0 {
 		return solver.isSolved()
@@ -58,8 +58,11 @@ func (solver *Solver) search(depth, maxDepth int) bool {
 	buf := &solver.moves[depth]
 	*buf = board.Moves(*buf)
 	for _, move := range *buf {
+		if move.Piece == previousPiece {
+			continue
+		}
 		board.DoMove(move)
-		solved := solver.search(depth+1, maxDepth)
+		solved := solver.search(depth+1, maxDepth, move.Piece)
 		board.UndoMove(move)
 		if solved {
 			solver.memo.Set(board.MemoKey(), height-1)
@@ -93,7 +96,7 @@ func (solver *Solver) solve(skipChecks bool) Solution {
 	for i := 1; ; i++ {
 		solver.path = make([]Move, i)
 		solver.moves = make([][]Move, i)
-		if solver.search(0, i) {
+		if solver.search(0, i, -1) {
 			moves := solver.path
 			steps := 0
 			for _, move := range moves {

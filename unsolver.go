@@ -14,7 +14,7 @@ func NewUnsolver(board *Board) *Unsolver {
 	return &Unsolver{board, solver, memo, 0, board.Copy()}
 }
 
-func (unsolver *Unsolver) search(numMoves int) {
+func (unsolver *Unsolver) search(numMoves, previousPiece int) {
 	board := unsolver.board
 
 	if !unsolver.memo.Add(board.MemoKey(), 0) {
@@ -27,10 +27,13 @@ func (unsolver *Unsolver) search(numMoves int) {
 	}
 
 	for _, move := range board.Moves(nil) {
+		if move.Piece == previousPiece {
+			continue
+		}
 		board.DoMove(move)
 		newNumMoves := unsolver.solver.solve(true).NumMoves
 		if newNumMoves-numMoves >= 0 {
-			unsolver.search(newNumMoves)
+			unsolver.search(newNumMoves, move.Piece)
 		}
 		board.UndoMove(move)
 	}
@@ -41,6 +44,6 @@ func (unsolver *Unsolver) Unsolve() *Board {
 	if !solution.Solvable {
 		return unsolver.bestBoard
 	}
-	unsolver.search(solution.NumMoves)
+	unsolver.search(solution.NumMoves, -1)
 	return unsolver.bestBoard
 }
