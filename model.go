@@ -189,6 +189,31 @@ func (board *Board) String() string {
 	return strings.Join(rows, "\n")
 }
 
+func (board *Board) Hash() string {
+	w := board.Width
+	h := board.Height
+	grid := make([]rune, w*h)
+	for i := range grid {
+		grid[i] = '.'
+	}
+	for _, i := range board.Walls {
+		grid[i] = 'x'
+	}
+	for i, piece := range board.Pieces {
+		label := rune('A' + i)
+		idx := piece.Position
+		stride := 1
+		if piece.Orientation == Vertical {
+			stride = w
+		}
+		for j := 0; j < piece.Size; j++ {
+			grid[idx] = label
+			idx += stride
+		}
+	}
+	return string(grid)
+}
+
 func (board *Board) Copy() *Board {
 	w := board.Width
 	h := board.Height
@@ -432,6 +457,10 @@ func (board *Board) Solve() Solution {
 	return NewSolver(board).Solve()
 }
 
+func (board *Board) Unsolve() *Board {
+	return NewUnsolver(board).Unsolve()
+}
+
 func (board *Board) Render() image.Image {
 	return renderBoard(board)
 }
@@ -442,6 +471,10 @@ func (board *Board) Impossible() bool {
 
 func (board *Board) BlockedSquares() []int {
 	return theStaticAnalyzer.BlockedSquares(board)
+}
+
+func (board *Board) Canonicalize() *Board {
+	return NewCanonicalizer(board).Canonicalize()
 }
 
 // random board mutation below

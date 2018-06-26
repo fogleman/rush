@@ -10,6 +10,15 @@ func MakeMemoKey(pieces []Piece) MemoKey {
 	return key
 }
 
+func (a *MemoKey) Less(b *MemoKey) bool {
+	for i := 0; i < MaxPieces; i++ {
+		if a[i] != b[i] {
+			return a[i] < b[i]
+		}
+	}
+	return false
+}
+
 type Memo struct {
 	data map[MemoKey]int
 	hits uint64
