@@ -450,15 +450,14 @@ func (board *Board) UndoMove(move Move) {
 }
 
 func (board *Board) StateIterator() <-chan *Board {
-	ch := make(chan *Board)
+	ch := make(chan *Board, 16)
 	board = board.Copy()
-	seen := make(map[MemoKey]bool)
+	memo := NewMemo()
 	var f func(int, int)
 	f = func(depth, previousPiece int) {
-		if _, ok := seen[board.memoKey]; ok {
+		if !memo.Add(board.MemoKey(), 0) {
 			return
 		}
-		seen[board.memoKey] = true
 		ch <- board.Copy()
 		for _, move := range board.Moves(nil) {
 			if move.Piece == previousPiece {
@@ -566,9 +565,9 @@ func (board *Board) mutateMakeMove() UndoFunc {
 }
 
 func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
-	// if len(board.Pieces) >= 5 {
-	// 	return nil
-	// }
+	if len(board.Pieces) >= 8 {
+		return nil
+	}
 	piece, ok := board.randomPiece(maxAttempts)
 	if !ok {
 		return nil
@@ -581,9 +580,9 @@ func (board *Board) mutateAddPiece(maxAttempts int) UndoFunc {
 }
 
 func (board *Board) mutateAddWall(maxAttempts int) UndoFunc {
-	// if len(board.Walls) >= 1 {
-	// 	return nil
-	// }
+	if len(board.Walls) >= 0 {
+		return nil
+	}
 	wall, ok := board.randomWall(maxAttempts)
 	if !ok {
 		return nil
