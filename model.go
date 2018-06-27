@@ -449,6 +449,33 @@ func (board *Board) UndoMove(move Move) {
 	board.DoMove(Move{move.Piece, -move.Steps})
 }
 
+func (board *Board) StateIterator() <-chan *Board {
+	ch := make(chan *Board)
+	board = board.Copy()
+	seen := make(map[MemoKey]bool)
+	var f func(int, int)
+	f = func(depth, previousPiece int) {
+		if _, ok := seen[board.memoKey]; ok {
+			return
+		}
+		seen[board.memoKey] = true
+		ch <- board.Copy()
+		for _, move := range board.Moves(nil) {
+			if move.Piece == previousPiece {
+				continue
+			}
+			board.DoMove(move)
+			f(depth+1, move.Piece)
+			board.UndoMove(move)
+		}
+		if depth == 0 {
+			close(ch)
+		}
+	}
+	go f(0, -1)
+	return ch
+}
+
 func (board *Board) MemoKey() *MemoKey {
 	return &board.memoKey
 }
@@ -474,7 +501,16 @@ func (board *Board) BlockedSquares() []int {
 }
 
 func (board *Board) Canonicalize() *Board {
-	return NewCanonicalizer(board).Canonicalize()
+	bestKey := board.memoKey
+	bestBoard := board.Copy()
+	for b := range board.StateIterator() {
+		if b.memoKey.Less(&bestKey) {
+			bestKey = b.memoKey
+			bestBoard = b.Copy()
+		}
+	}
+	bestBoard.SortPieces()
+	return bestBoard
 }
 
 // random board mutation below
