@@ -133,3 +133,7 @@ func (solver *Solver) solve(skipChecks bool) Solution {
 func (solver *Solver) Solve() Solution {
 	return solver.solve(false)
 }
+
+func (solver *Solver) UnsafeSolve() Solution {
+	return solver.solve(true)
+}
