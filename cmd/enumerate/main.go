@@ -2,28 +2,38 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+
+	_ "net/http/pprof"
 
 	. "github.com/fogleman/rush"
 )
 
 const (
-	W  = 4
-	H  = 4
-	PP = 6
+	// W = 4
+	// H = 4
+	// P = 6
 
-// W  = 5
-// H  = 5
-// PP = 13
+	// W = 5
+	// H = 5
+	// P = 13
+
+	W = 6
+	H = 6
+	P = 16
 )
 
 type Enumerator struct {
-	Board        *Board
-	Seen         map[string]bool
-	Memo         *Memo
-	Solver       *Solver
-	BestSolution Solution
-	BestBoard    *Board
-	Count        int
+	Board           *Board
+	Seen            map[string]bool
+	Memo            *Memo
+	Solver          *Solver
+	HardestSolution Solution
+	HardestBoard    *Board
+	Canonical       bool
+	CanonicalKey    MemoKey
+	Count           int
 }
 
 func NewEnumerator(board *Board) *Enumerator {
@@ -33,7 +43,7 @@ func NewEnumerator(board *Board) *Enumerator {
 	return e
 }
 
-func (e *Enumerator) search(previousPiece int) {
+func (e *Enumerator) hardestSearch(previousPiece int) {
 	board := e.Board
 
 	if !e.Memo.Add(board.MemoKey(), 0) {
@@ -41,11 +51,10 @@ func (e *Enumerator) search(previousPiece int) {
 	}
 
 	solution := e.Solver.UnsafeSolve()
-	if solution.NumMoves >= e.BestSolution.NumMoves {
-		if board.MemoKey().Less(e.BestBoard.MemoKey()) {
-			e.BestSolution = solution
-			e.BestBoard = board.Copy()
-		}
+	delta := solution.NumMoves - e.HardestSolution.NumMoves
+	if delta > 0 || (delta == 0 && board.MemoKey().Less(e.HardestBoard.MemoKey(), true)) {
+		e.HardestSolution = solution
+		e.HardestBoard = board.Copy()
 	}
 
 	for _, move := range board.Moves(nil) {
@@ -53,40 +62,79 @@ func (e *Enumerator) search(previousPiece int) {
 			continue
 		}
 		board.DoMove(move)
-		e.search(move.Piece)
+		e.hardestSearch(move.Piece)
 		board.UndoMove(move)
 	}
 }
 
-func (e *Enumerator) Search() {
+func (e *Enumerator) HardestSearch() {
 	e.Memo = NewMemo()
 	e.Solver = NewSolver(e.Board)
-	e.BestBoard = e.Board.Copy()
-	e.BestSolution = e.Solver.Solve()
-	e.search(-1)
-	e.BestBoard.SortPieces()
+	e.HardestBoard = e.Board.Copy()
+	e.HardestSolution = e.Solver.Solve()
+	e.hardestSearch(-1)
+	e.HardestBoard.SortPieces()
+}
+
+func (e *Enumerator) canonicalSearch(previousPiece int) {
+	if !e.Canonical {
+		return
+	}
+
+	board := e.Board
+
+	if !e.Memo.Add(board.MemoKey(), 0) {
+		return
+	}
+
+	if board.MemoKey().Less(&e.CanonicalKey, false) {
+		e.Canonical = false
+		return
+	}
+
+	for _, move := range board.Moves(nil) {
+		if move.Piece == 0 {
+			continue
+		}
+		if move.Piece == previousPiece {
+			continue
+		}
+		board.DoMove(move)
+		e.canonicalSearch(move.Piece)
+		board.UndoMove(move)
+	}
+}
+
+func (e *Enumerator) CanonicalSearch() {
+	e.Memo = NewMemo()
+	e.Canonical = true
+	e.CanonicalKey = *e.Board.MemoKey()
+	e.canonicalSearch(-1)
 }
 
 func (e *Enumerator) place(after int) {
 	board := e.Board
 
-	e.Search()
-	canonical := e.BestBoard
-	solution := e.BestSolution
-
-	key := canonical.Hash()
-	if _, ok := e.Seen[key]; ok {
+	if board.HasFullRowOrCol() {
 		return
-		// 1393 431725
 	}
+
+	e.CanonicalSearch()
+	if !e.Canonical {
+		return
+	}
+
+	e.HardestSearch()
+	hardest := e.HardestBoard
+	solution := e.HardestSolution
+
+	key := hardest.Hash()
+	_, seen := e.Seen[key]
 	e.Seen[key] = true
 
-	if solution.NumMoves >= 2 {
+	if !seen && solution.NumMoves >= 1 {
 		e.Count++
-		fmt.Println(len(e.Seen))
-		fmt.Println(solution.NumMoves)
-		fmt.Println(canonical)
-		fmt.Println()
+		fmt.Println(key, solution.NumMoves)
 	}
 
 	w := board.Width
@@ -123,8 +171,12 @@ func (e *Enumerator) Enumerate() {
 }
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	board := NewEmptyBoard(W, H)
-	board.AddPiece(Piece{PP, 2, Horizontal})
+	board.AddPiece(Piece{P, 2, Horizontal})
 	e := NewEnumerator(board)
 	e.Enumerate()
 	fmt.Println(len(e.Seen), e.Count)
