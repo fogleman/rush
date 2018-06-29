@@ -235,6 +235,35 @@ func (board *Board) SortPieces() {
 	board.memoKey = MakeMemoKey(board.Pieces)
 }
 
+func (board *Board) HasFullRowOrCol() bool {
+	w := board.Width
+	h := board.Height
+	for y := 0; y < h; y++ {
+		var size int
+		for _, piece := range board.Pieces {
+			if piece.Orientation == Horizontal && piece.Row(w) == y {
+				size += piece.Size
+			}
+
+		}
+		if size == w {
+			return true
+		}
+	}
+	for x := 0; x < w; x++ {
+		var size int
+		for _, piece := range board.Pieces {
+			if piece.Orientation == Vertical && piece.Col(w) == x {
+				size += piece.Size
+			}
+		}
+		if size == h {
+			return true
+		}
+	}
+	return false
+}
+
 func (board *Board) Validate() error {
 	w := board.Width
 	h := board.Height
@@ -503,7 +532,7 @@ func (board *Board) Canonicalize() *Board {
 	bestKey := board.memoKey
 	bestBoard := board.Copy()
 	for b := range board.StateIterator() {
-		if b.memoKey.Less(&bestKey) {
+		if b.memoKey.Less(&bestKey, true) {
 			bestKey = b.memoKey
 			bestBoard = b.Copy()
 		}

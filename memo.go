@@ -10,8 +10,12 @@ func MakeMemoKey(pieces []Piece) MemoKey {
 	return key
 }
 
-func (a *MemoKey) Less(b *MemoKey) bool {
-	for i := 0; i < MaxPieces; i++ {
+func (a *MemoKey) Less(b *MemoKey, primary bool) bool {
+	var i int
+	if !primary {
+		i++
+	}
+	for ; i < MaxPieces; i++ {
 		if a[i] != b[i] {
 			return a[i] < b[i]
 		}
