@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-
-	_ "net/http/pprof"
 
 	. "github.com/fogleman/rush"
 )
@@ -33,7 +29,6 @@ type Enumerator struct {
 	HardestBoard    *Board
 	Canonical       bool
 	CanonicalKey    MemoKey
-	Count           int
 }
 
 func NewEnumerator(board *Board) *Enumerator {
@@ -128,13 +123,13 @@ func (e *Enumerator) place(after int) {
 	hardest := e.HardestBoard
 	solution := e.HardestSolution
 
-	key := hardest.Hash()
-	_, seen := e.Seen[key]
-	e.Seen[key] = true
-
-	if !seen && solution.NumMoves >= 1 {
-		e.Count++
-		fmt.Println(key, solution.NumMoves)
+	if solution.NumMoves >= 1 {
+		key := hardest.Hash()
+		_, seen := e.Seen[key]
+		if !seen {
+			e.Seen[key] = true
+			fmt.Printf("%02d %02d %s %d\n", solution.NumMoves, solution.NumSteps, key, solution.MemoSize)
+		}
 	}
 
 	w := board.Width
@@ -171,13 +166,9 @@ func (e *Enumerator) Enumerate() {
 }
 
 func main() {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	board := NewEmptyBoard(W, H)
 	board.AddPiece(Piece{P, 2, Horizontal})
 	e := NewEnumerator(board)
 	e.Enumerate()
-	fmt.Println(len(e.Seen), e.Count)
+	fmt.Println(len(e.Seen))
 }
