@@ -14,16 +14,22 @@ type Solver struct {
 	board  *Board
 	target int
 	memo   *Memo
+	sa     *StaticAnalyzer
 	path   []Move
 	moves  [][]Move
 }
 
-func NewSolver(board *Board) *Solver {
+func NewSolverWithStaticAnalyzer(board *Board, sa *StaticAnalyzer) *Solver {
 	solver := Solver{}
 	solver.board = board
 	solver.target = board.Target()
 	solver.memo = NewMemo()
+	solver.sa = sa
 	return &solver
+}
+
+func NewSolver(board *Board) *Solver {
+	return NewSolverWithStaticAnalyzer(board, theStaticAnalyzer)
 }
 
 func (solver *Solver) isSolved() bool {
@@ -81,7 +87,7 @@ func (solver *Solver) solve(skipChecks bool) Solution {
 		if err := board.Validate(); err != nil {
 			return Solution{}
 		}
-		if board.Impossible() {
+		if solver.sa.Impossible(board) {
 			return Solution{}
 		}
 	}

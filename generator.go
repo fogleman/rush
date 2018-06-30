@@ -29,7 +29,7 @@ func (g *Generator) Generate(iterations int) *Board {
 
 	// unsolve step
 	before := NewSolver(board).Solve().NumMoves
-	board = NewUnsolver(board).Unsolve()
+	board, _ = NewUnsolver(board).Unsolve()
 	after := NewSolver(board).Solve().NumMoves
 	fmt.Println(before, after)
 

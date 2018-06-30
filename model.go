@@ -516,7 +516,7 @@ func (board *Board) Solve() Solution {
 	return NewSolver(board).Solve()
 }
 
-func (board *Board) Unsolve() *Board {
+func (board *Board) Unsolve() (*Board, Solution) {
 	return NewUnsolver(board).Unsolve()
 }
 

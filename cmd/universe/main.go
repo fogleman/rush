@@ -139,7 +139,7 @@ func NewPositionGenerator(w, h, pr, ps, mins, maxs int) *PositionGenerator {
 }
 
 func NewDefaultPositionGenerator() *PositionGenerator {
-	return NewPositionGenerator(6, 6, 2, 2, 2, 3)
+	return NewPositionGenerator(5, 5, 2, 2, 2, 3)
 }
 
 func (pg *PositionGenerator) precomputeGroups(sizes []int, sum int) {
@@ -301,13 +301,13 @@ func (pg *PositionGenerator) populateCol(x int, mask uint64, group int, board *B
 		// }
 		// hardest := pg.hardestBoard
 		// solution := pg.hardestSolution
-		eq := ""
-		if group == pg.prevGroup {
-			eq = "***"
-		}
-		pg.prevGroup = group
+		// eq := ""
+		// if group == pg.prevGroup {
+		// 	eq = "***"
+		// }
+		// pg.prevGroup = group
 		// fmt.Println(pg.counter1, pg.counter2, hardest.Hash(), solution.NumMoves, solution.MemoSize, group, eq)
-		fmt.Println(pg.counter1, pg.counter2, board.Hash(), group, eq)
+		// fmt.Println(pg.counter1, pg.counter2, board.Hash(), group, eq)
 		return
 	}
 	group *= len(pg.groups)
