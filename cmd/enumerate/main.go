@@ -7,17 +7,22 @@ import (
 )
 
 const (
-	// W = 4
-	// H = 4
-	// P = 6
+	// W  = 4
+	// H  = 4
+	// Py = 1
+	// Px = 2
 
-	// W = 5
-	// H = 5
-	// P = 13
+	// W  = 5
+	// H  = 5
+	// Py = 2
+	// Px = 3
 
-	W = 6
-	H = 6
-	P = 16
+	W  = 6
+	H  = 6
+	Py = 2
+	Px = 4
+
+	P = Py*W + Px
 )
 
 type Enumerator struct {
@@ -29,6 +34,7 @@ type Enumerator struct {
 	HardestBoard    *Board
 	Canonical       bool
 	CanonicalKey    MemoKey
+	Count           int
 }
 
 func NewEnumerator(board *Board) *Enumerator {
@@ -123,12 +129,18 @@ func (e *Enumerator) place(after int) {
 	hardest := e.HardestBoard
 	solution := e.HardestSolution
 
+	if solution.NumMoves == 0 {
+		return
+	}
+
 	if solution.NumMoves >= 1 {
 		key := hardest.Hash()
 		_, seen := e.Seen[key]
 		if !seen {
 			e.Seen[key] = true
 			fmt.Printf("%02d %02d %s %d\n", solution.NumMoves, solution.NumSteps, key, solution.MemoSize)
+		} else {
+			e.Count++
 		}
 	}
 
@@ -146,6 +158,9 @@ func (e *Enumerator) place(after int) {
 				yy = H - s + 1
 			}
 			for y := 0; y < yy; y++ {
+				if o == Horizontal && y == Py {
+					continue
+				}
 				for x := 0; x < xx; x++ {
 					p := y*W + x
 					if p <= after {
@@ -170,5 +185,5 @@ func main() {
 	board.AddPiece(Piece{P, 2, Horizontal})
 	e := NewEnumerator(board)
 	e.Enumerate()
-	fmt.Println(len(e.Seen))
+	fmt.Println(len(e.Seen), e.Count)
 }

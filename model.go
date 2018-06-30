@@ -400,6 +400,10 @@ func (board *Board) RemovePiece(i int) {
 	board.memoKey[j] = 0
 }
 
+func (board *Board) RemoveLastPiece() {
+	board.RemovePiece(len(board.Pieces) - 1)
+}
+
 func (board *Board) RemoveWall(i int) {
 	board.occupied[board.Walls[i]] = false
 	a := board.Walls
