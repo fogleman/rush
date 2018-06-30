@@ -122,7 +122,7 @@ func worker(boards <-chan *Board, results chan<- Result) {
 		unsolver := NewUnsolverWithStaticAnalyzer(board, sa)
 		unsolved, solution := unsolver.Unsolve()
 		unsolved.SortPieces()
-		if solution.NumMoves >= 1 {
+		if solution.NumMoves >= 2 {
 			results <- Result{unsolved, solution, false}
 		}
 	}
