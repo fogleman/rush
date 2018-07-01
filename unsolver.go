@@ -45,11 +45,19 @@ func (u *Unsolver) search(previousPiece int) {
 	}
 }
 
-func (u *Unsolver) Unsolve() (*Board, Solution) {
-	u.bestBoard = u.board
-	u.bestSolution = u.solver.Solve()
+func (u *Unsolver) unsolve(skipChecks bool) (*Board, Solution) {
+	u.bestBoard = u.board.Copy()
+	u.bestSolution = u.solver.solve(skipChecks)
 	if u.bestSolution.Solvable {
 		u.search(-1)
 	}
 	return u.bestBoard, u.bestSolution
+}
+
+func (u *Unsolver) Unsolve() (*Board, Solution) {
+	return u.unsolve(false)
+}
+
+func (u *Unsolver) UnsafeUnsolve() (*Board, Solution) {
+	return u.unsolve(true)
 }
