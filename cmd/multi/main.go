@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"time"
 
 	. "github.com/fogleman/rush"
 )
@@ -16,66 +17,14 @@ const (
 
 	MinSize = 2
 	MaxSize = 3
+
+	ChannelBufferSize = 1 << 18
+
+	MaxCounter = 88914655
+	// 4x4 = 695
+	// 5x5 = 124886
+	// 6x6 = 88914655
 )
-
-// Enumerator generates all possible Boards
-type Enumerator struct {
-	board      *Board
-	primaryRow int
-	minSize    int
-	maxSize    int
-	ch         chan *Board
-}
-
-func NewEnumerator(w, h, pr, ps, mins, maxs int) *Enumerator {
-	target := (PrimaryRow+1)*w - PrimarySize
-	board := NewEmptyBoard(w, h)
-	board.AddPiece(Piece{target, PrimarySize, Horizontal})
-	ch := make(chan *Board, 1024)
-	return &Enumerator{board, pr, mins, maxs, ch}
-}
-
-func (e *Enumerator) Enumerate() <-chan *Board {
-	go func() {
-		e.place(-1)
-		close(e.ch)
-	}()
-	return e.ch
-}
-
-func (e *Enumerator) place(after int) {
-	board := e.board
-	if board.HasFullRowOrCol() {
-		return
-	}
-	e.ch <- board.Copy()
-	for o := Horizontal; o <= Vertical; o++ {
-		for s := e.minSize; s <= e.maxSize; s++ {
-			xx := board.Width
-			yy := board.Height
-			if o == Horizontal {
-				xx = W - s + 1
-			} else {
-				yy = H - s + 1
-			}
-			for y := 0; y < yy; y++ {
-				if o == Horizontal && y == e.primaryRow {
-					continue
-				}
-				for x := 0; x < xx; x++ {
-					p := y*W + x
-					if p <= after {
-						continue
-					}
-					if board.AddPiece(Piece{p, s, o}) {
-						e.place(p)
-						board.RemoveLastPiece()
-					}
-				}
-			}
-		}
-	}
-}
 
 func isCanonical(board *Board, memo *Memo, key *MemoKey, previousPiece int) bool {
 	if board.MemoKey().Less(key, false) {
@@ -109,37 +58,60 @@ func IsCanonical(board *Board) bool {
 
 type Result struct {
 	Board    *Board
+	Unsolved *Board
 	Solution Solution
+	Group    int
+	Counter  uint64
 	Done     bool
 }
 
-func worker(boards <-chan *Board, results chan<- Result) {
-	sa := NewStaticAnalyzer()
-	for board := range boards {
+func worker(jobs <-chan EnumeratorItem, results chan<- Result) {
+	for job := range jobs {
+		board := job.Board
+		board.SortPieces()
 		if !IsCanonical(board) {
 			continue
 		}
-		unsolver := NewUnsolverWithStaticAnalyzer(board, sa)
-		unsolved, solution := unsolver.Unsolve()
+		unsolver := NewUnsolverWithStaticAnalyzer(board, nil)
+		unsolved, solution := unsolver.UnsafeUnsolve()
 		unsolved.SortPieces()
-		if solution.NumMoves >= 2 {
-			results <- Result{unsolved, solution, false}
+		if solution.NumMoves < 2 {
+			continue
 		}
+		ok := true
+		for i := 1; i < len(unsolved.Pieces); i++ {
+			b := unsolved.Copy()
+			b.RemovePiece(i)
+			s := b.UnsafeSolve()
+			if s.NumMoves == solution.NumMoves && s.NumSteps == solution.NumSteps {
+				ok = false
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+		results <- Result{board, unsolved, solution, job.Group, job.Counter, false}
 	}
 	results <- Result{Done: true}
 }
 
 func main() {
 	e := NewEnumerator(W, H, PrimaryRow, PrimarySize, MinSize, MaxSize)
-	boards := e.Enumerate()
-	results := make(chan Result, 1024)
+	// fmt.Println(e.Count())
+	// return
+	jobs := e.Enumerate(ChannelBufferSize)
+	results := make(chan Result, ChannelBufferSize)
 
 	wn := runtime.NumCPU()
 	for i := 0; i < wn; i++ {
-		go worker(boards, results)
+		go worker(jobs, results)
 	}
 
 	seen := make(map[string]bool)
+	groups := make(map[int]int)
+	count := 0
+	start := time.Now()
 	for result := range results {
 		if result.Done {
 			wn--
@@ -148,15 +120,24 @@ func main() {
 			}
 			continue
 		}
-		unsolved := result.Board
+		count++
+		unsolved := result.Unsolved
 		solution := result.Solution
 		key := unsolved.Hash()
 		if _, ok := seen[key]; ok {
 			continue
 		}
 		seen[key] = true
+		groups[result.Group]++
+		pct := float64(result.Counter) / MaxCounter
+		elapsed := time.Since(start)
 		fmt.Printf(
-			"%02d %02d %s %d\n",
-			solution.NumMoves, solution.NumSteps, key, solution.MemoSize)
+			"%02d %02d %02d %s %.9f %d %s\n",
+			solution.NumMoves, solution.NumSteps, len(unsolved.Pieces), key,
+			pct, solution.MemoSize, elapsed)
 	}
+	fmt.Println(len(seen), count, len(groups))
+	// 4x4 = 31 31 31
+	// 5x5 = 2329 6073 2186
+	// 702 1280 665
 }
