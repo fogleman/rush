@@ -180,7 +180,7 @@ func main() {
 			solution.NumMoves, solution.NumSteps, len(unsolved.Pieces),
 			key, solution.MemoSize)
 		fmt.Fprintf(
-			os.Stderr, "[%.9f] %d jobs, %d canonical, %d non-trivial, %d minimal, %d distinct, %d groups - %s\n",
+			os.Stderr, "[%.9f] %d in, %d cn, %d nt, %d mn, %d dt, %d gp - %s\n",
 			pct, jobCount, canonicalCount, nonTrivialCount, minimalCount,
 			len(seen), len(groups), elapsed)
 	}
