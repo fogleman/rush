@@ -184,7 +184,4 @@ func main() {
 			pct, jobCount, canonicalCount, nonTrivialCount, minimalCount,
 			len(seen), len(groups), elapsed)
 	}
-	// 4x4 = 31 31 31
-	// 5x5 = 2329 6073 2186
-	// 702 1280 665
 }
