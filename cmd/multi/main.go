@@ -26,37 +26,14 @@ const (
 	MaxCounter = 88914655 // 6x6
 )
 
-type Canonicalizer struct {
-	board *Board
-	memo  *Memo
-	key   *MemoKey
-	moves [][]Move
-}
-
-func NewCanonicalizer() *Canonicalizer {
-	moves := make([][]Move, 4096)
-	return &Canonicalizer{moves: moves}
-}
-
-func (c *Canonicalizer) IsCanonical(board *Board) bool {
-	key := *board.MemoKey()
-	c.board = board
-	c.memo = NewMemo()
-	c.key = &key
-	return c.isCanonical(0, -1)
-}
-
-func (c *Canonicalizer) isCanonical(depth, previousPiece int) bool {
-	board := c.board
-	if board.MemoKey().Less(c.key, false) {
+func isCanonical(board *Board, memo *Memo, key *MemoKey, previousPiece int) bool {
+	if board.MemoKey().Less(key, false) {
 		return false
 	}
-	if !c.memo.Add(board.MemoKey(), 0) {
+	if !memo.Add(board.MemoKey(), 0) {
 		return true
 	}
-	buf := &c.moves[depth]
-	*buf = board.Moves(*buf)
-	for _, move := range *buf {
+	for _, move := range board.Moves(nil) {
 		if move.Piece == 0 {
 			continue
 		}
@@ -64,13 +41,19 @@ func (c *Canonicalizer) isCanonical(depth, previousPiece int) bool {
 			continue
 		}
 		board.DoMove(move)
-		ok := c.isCanonical(depth+1, move.Piece)
+		ok := isCanonical(board, memo, key, move.Piece)
 		board.UndoMove(move)
 		if !ok {
 			return false
 		}
 	}
 	return true
+}
+
+func IsCanonical(board *Board) bool {
+	memo := NewMemo()
+	key := *board.MemoKey()
+	return isCanonical(board, memo, &key, -1)
 }
 
 type Result struct {
@@ -87,7 +70,6 @@ type Result struct {
 }
 
 func worker(jobs <-chan EnumeratorItem, results chan<- Result) {
-	canonicalizer := NewCanonicalizer()
 	var (
 		jobCount        int
 		canonicalCount  int
@@ -101,7 +83,7 @@ func worker(jobs <-chan EnumeratorItem, results chan<- Result) {
 
 		// only evaluate "canonical" boards
 		board.SortPieces()
-		if !canonicalizer.IsCanonical(board) {
+		if !IsCanonical(board) {
 			continue
 		}
 		canonicalCount++
