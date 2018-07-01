@@ -29,8 +29,21 @@ func (u *Unsolver) search(previousPiece int) {
 	}
 
 	solution := u.solver.UnsafeSolve()
-	delta := solution.NumMoves - u.bestSolution.NumMoves
-	if delta > 0 || (delta == 0 && board.MemoKey().Less(u.bestBoard.MemoKey(), true)) {
+
+	better := false
+	dNumMoves := solution.NumMoves - u.bestSolution.NumMoves
+	dNumSteps := solution.NumSteps - u.bestSolution.NumSteps
+	if dNumMoves >= 0 {
+		if dNumMoves > 0 {
+			better = true
+		} else if dNumMoves == 0 && dNumSteps > 0 {
+			better = true
+		} else if dNumMoves == 0 && dNumSteps == 0 && board.MemoKey().Less(u.bestBoard.MemoKey(), true) {
+			better = true
+		}
+	}
+
+	if better {
 		u.bestSolution = solution
 		u.bestBoard = board.Copy()
 	}
