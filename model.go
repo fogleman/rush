@@ -371,14 +371,18 @@ func (board *Board) setOccupied(piece Piece, value bool) {
 	}
 }
 
-func (board *Board) AddPiece(piece Piece) bool {
-	if board.isOccupied(piece) {
-		return false
-	}
+func (board *Board) addPiece(piece Piece) {
 	i := len(board.Pieces)
 	board.Pieces = append(board.Pieces, piece)
 	board.setOccupied(piece, true)
 	board.memoKey[i] = piece.Position
+}
+
+func (board *Board) AddPiece(piece Piece) bool {
+	if board.isOccupied(piece) {
+		return false
+	}
+	board.addPiece(piece)
 	return true
 }
 
@@ -518,6 +522,14 @@ func (board *Board) Solve() Solution {
 
 func (board *Board) Unsolve() (*Board, Solution) {
 	return NewUnsolver(board).Unsolve()
+}
+
+func (board *Board) UnsafeSolve() Solution {
+	return NewSolver(board).UnsafeSolve()
+}
+
+func (board *Board) UnsafeUnsolve() (*Board, Solution) {
+	return NewUnsolver(board).UnsafeUnsolve()
 }
 
 func (board *Board) Render() image.Image {
