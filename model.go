@@ -3,6 +3,7 @@ package rush
 import (
 	"fmt"
 	"image"
+	"math"
 	"math/rand"
 	"sort"
 	"strings"
@@ -93,6 +94,18 @@ func NewRandomBoard(w, h, primaryRow, primarySize, numPieces, numWalls int) *Boa
 		board.mutateAddWall(100)
 	}
 	return board
+}
+
+func NewBoardFromString(desc string) (*Board, error) {
+	s := int(math.Sqrt(float64(len(desc))))
+	if s*s != len(desc) {
+		return nil, fmt.Errorf("NewBoardFromString only supports square boards")
+	}
+	rows := make([]string, s)
+	for i := range rows {
+		rows[i] = desc[i*s : i*s+s]
+	}
+	return NewBoard(rows)
 }
 
 func NewBoard(desc []string) (*Board, error) {
@@ -510,6 +523,28 @@ func (board *Board) StateIterator() <-chan *Board {
 	}
 	go f(0, -1)
 	return ch
+}
+
+func (board *Board) ReachableStates() int {
+	var count int
+	memo := NewMemo()
+	var f func(int)
+	f = func(previousPiece int) {
+		if !memo.Add(board.MemoKey(), 0) {
+			return
+		}
+		count++
+		for _, move := range board.Moves(nil) {
+			if move.Piece == previousPiece {
+				continue
+			}
+			board.DoMove(move)
+			f(move.Piece)
+			board.UndoMove(move)
+		}
+	}
+	f(-1)
+	return count
 }
 
 func (board *Board) MemoKey() *MemoKey {
