@@ -53,22 +53,6 @@ Board::Board(std::string desc) :
     }
 }
 
-const std::vector<Piece> &Board::Pieces() const {
-    return m_Pieces;
-}
-
-bb Board::Mask() const {
-    return m_Mask;
-}
-
-bb Board::HorzMask() const {
-    return m_HorzMask;
-}
-
-bb Board::VertMask() const {
-    return m_VertMask;
-}
-
 void Board::AddPiece(const Piece &piece) {
     m_Pieces.push_back(piece);
     m_Mask |= piece.Mask();
@@ -117,39 +101,36 @@ void Board::Moves(std::vector<Move> &moves) const {
     moves.clear();
     for (int i = 0; i < m_Pieces.size(); i++) {
         const auto &piece = m_Pieces[i];
-        const int position = piece.Position();
-        const int size = piece.Size();
-        const int stride = piece.Stride();
         // compute range
         int forwardSteps, reverseSteps;
-        if (stride == H) {
-            int x = position % BoardSize;
+        if (piece.Stride() == H) {
+            int x = piece.Position() % BoardSize;
             reverseSteps = -x;
-            forwardSteps = BoardSize - size - x;
+            forwardSteps = BoardSize - piece.Size() - x;
         } else {
-            int y = position / BoardSize;
+            int y = piece.Position() / BoardSize;
             reverseSteps = -y;
-            forwardSteps = BoardSize - size - y;
+            forwardSteps = BoardSize - piece.Size() - y;
         }
         // reverse (negative steps)
-        int p = position - stride;
+        int p = piece.Position() - piece.Stride();
         bb mask = (bb)1 << p;
         for (int steps = -1; steps >= reverseSteps; steps--) {
             if ((m_Mask & mask) != 0) {
                 break;
             }
             moves.emplace_back(Move(i, steps));
-            mask >>= stride;
+            mask >>= piece.Stride();
         }
         // forward (positive steps)
-        p = position + size * stride;
+        p = piece.Position() + piece.Size() * piece.Stride();
         mask = (bb)1 << p;
         for (int steps = 1; steps <= forwardSteps; steps++) {
             if ((m_Mask & mask) != 0) {
                 break;
             }
             moves.emplace_back(Move(i, steps));
-            mask <<= stride;
+            mask <<= piece.Stride();
         }
     }
 }
@@ -170,4 +151,22 @@ std::string Board::String() const {
 
 std::ostream& operator<<(std::ostream &stream, const Board &board) {
     return stream << board.String();
+}
+
+bool operator<(const Board &b1, const Board &b2) {
+    if (b1.HorzMask() == b2.HorzMask()) {
+        return b1.VertMask() < b2.VertMask();
+    }
+    return b1.HorzMask() < b2.HorzMask();
+}
+
+size_t Board::operator()(const Board &board) const {
+    return std::hash<bb>()(board.HorzMask()) ^ std::hash<bb>()(board.VertMask());
+}
+
+bool Board::operator==(const Board& other) const {
+    return HorzMask() == other.HorzMask() && VertMask() == other.VertMask();
+// return (name == other.name)
+// && (options == other.options)
+// && (foobar == other.foobar);
 }

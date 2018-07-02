@@ -3,35 +3,35 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
+	"math/rand"
 
-	"github.com/fogleman/rush"
+	. "github.com/fogleman/rush"
 )
 
-func solve(desc []string) {
-	board, err := rush.NewBoard(desc)
+func main() {
+	board, err := NewBoard([]string{
+		// "BCDDE.",
+		// "BCF.EG",
+		// "B.FAAG",
+		// "HHHI.G",
+		// "..JIKK",
+		// "LLJMM.",
+		"BB.C..",
+		".D.CEE",
+		".DAAFG",
+		"H.IIFG",
+		"H.JKK.",
+		"LLJ...",
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	start := time.Now()
-	solution := board.Solve()
-	elapsed := time.Since(start)
-
-	// fmt.Println(solution, elapsed)
-	fmt.Println(solution.Solvable, solution.NumMoves, elapsed)
-}
-
-func main() {
-	desc := []string{
-		"BBBCDE",
-		"FGGCDE",
-		"F.AADE",
-		"HHI...",
-		".JI.KK",
-		".JLLMM",
+	var moves []Move
+	memo := NewMemo()
+	for i := 0; i < 5000000; i++ {
+		memo.Add(board.MemoKey(), 0)
+		moves = board.Moves(moves)
+		board.DoMove(moves[rand.Intn(len(moves))])
 	}
-	for i := 0; i < 10; i++ {
-		solve(desc)
-	}
+	fmt.Println(memo.Size())
 }

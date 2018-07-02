@@ -6,11 +6,25 @@
 class Piece {
 public:
     explicit Piece(int position, int size, int stride);
-    int Position() const;
-    int Size() const;
-    int Stride() const;
-    bb Mask() const;
+
+    int Position() const {
+        return m_Position;
+    }
+
+    int Size() const {
+        return m_Size;
+    }
+
+    int Stride() const {
+        return m_Stride;
+    }
+
+    bb Mask() const {
+        return m_Mask;
+    }
+
     void Move(int steps);
+
 private:
     int m_Position;
     int m_Size;

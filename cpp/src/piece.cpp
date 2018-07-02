@@ -13,22 +13,6 @@ Piece::Piece(int position, int size, int stride) :
     }
 }
 
-int Piece::Position() const {
-    return m_Position;
-}
-
-int Piece::Size() const {
-    return m_Size;
-}
-
-int Piece::Stride() const {
-    return m_Stride;
-}
-
-bb Piece::Mask() const {
-    return m_Mask;
-}
-
 void Piece::Move(int steps) {
     const int d = m_Stride * steps;
     m_Position += d;
