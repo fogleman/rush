@@ -79,19 +79,30 @@ void Board::AddPiece(const Piece &piece) {
     }
 }
 
-void Board::DoMove(const int piece, const int steps) {
-    auto &p = m_Pieces[piece];
-    m_Mask &= ~p.Mask();
-    if (p.Stride() == H) {
-        m_HorzMask &= ~p.Mask();
-        p.Move(steps);
-        m_HorzMask |= p.Mask();
+void Board::PopPiece() {
+    const auto &piece = m_Pieces.back();
+    m_Mask &= ~piece.Mask();
+    if (piece.Stride() == H) {
+        m_HorzMask &= ~piece.Mask();
     } else {
-        m_VertMask &= ~p.Mask();
-        p.Move(steps);
-        m_VertMask |= p.Mask();
+        m_VertMask &= ~piece.Mask();
     }
-    m_Mask |= p.Mask();
+    m_Pieces.pop_back();
+}
+
+void Board::DoMove(const int index, const int steps) {
+    auto &piece = m_Pieces[index];
+    m_Mask &= ~piece.Mask();
+    if (piece.Stride() == H) {
+        m_HorzMask &= ~piece.Mask();
+        piece.Move(steps);
+        m_HorzMask |= piece.Mask();
+    } else {
+        m_VertMask &= ~piece.Mask();
+        piece.Move(steps);
+        m_VertMask |= piece.Mask();
+    }
+    m_Mask |= piece.Mask();
 }
 
 void Board::DoMove(const Move &move) {
@@ -102,8 +113,8 @@ void Board::UndoMove(const Move &move) {
     DoMove(move.Piece(), -move.Steps());
 }
 
-std::vector<Move> Board::Moves() const {
-    std::vector<Move> moves;
+void Board::Moves(std::vector<Move> &moves) const {
+    moves.clear();
     for (int i = 0; i < m_Pieces.size(); i++) {
         const auto &piece = m_Pieces[i];
         const int position = piece.Position();
@@ -141,7 +152,6 @@ std::vector<Move> Board::Moves() const {
             mask <<= stride;
         }
     }
-    return moves;
 }
 
 std::string Board::String() const {

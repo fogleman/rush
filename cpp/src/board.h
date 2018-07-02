@@ -12,7 +12,7 @@
 class Board {
 public:
     Board();
-    Board(std::string desc);
+    explicit Board(std::string desc);
 
     const std::vector<Piece> &Pieces() const;
 
@@ -21,12 +21,13 @@ public:
     bb VertMask() const;
 
     void AddPiece(const Piece &piece);
+    void PopPiece();
 
     void DoMove(const int piece, const int steps);
     void DoMove(const Move &move);
     void UndoMove(const Move &move);
 
-    std::vector<Move> Moves() const;
+    void Moves(std::vector<Move> &moves) const;
 
     std::string String() const;
 private:
