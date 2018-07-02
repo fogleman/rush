@@ -22,7 +22,7 @@ const (
 	ChannelBufferSize = 1 << 18
 
 	// MaxCounter = 695      // 4x4
-	// MaxCounter = 124886 // 5x5
+	// MaxCounter = 124886   // 5x5
 	MaxCounter = 88914655 // 6x6
 )
 
@@ -126,7 +126,13 @@ func worker(jobs <-chan EnumeratorItem, results chan<- Result) {
 		nonTrivialCount = 0
 		minimalCount = 0
 	}
-	results <- Result{Done: true}
+	results <- Result{
+		Done:            true,
+		JobCount:        jobCount,
+		CanonicalCount:  canonicalCount,
+		NonTrivialCount: nonTrivialCount,
+		MinimalCount:    minimalCount,
+	}
 }
 
 func main() {
@@ -151,6 +157,11 @@ func main() {
 	)
 	start := time.Now()
 	for result := range results {
+		jobCount += result.JobCount
+		canonicalCount += result.CanonicalCount
+		nonTrivialCount += result.NonTrivialCount
+		minimalCount += result.MinimalCount
+
 		if result.Done {
 			wn--
 			if wn == 0 {
@@ -158,11 +169,6 @@ func main() {
 			}
 			continue
 		}
-
-		jobCount += result.JobCount
-		canonicalCount += result.CanonicalCount
-		nonTrivialCount += result.NonTrivialCount
-		minimalCount += result.MinimalCount
 
 		unsolved := result.Unsolved
 		solution := result.Solution
@@ -174,14 +180,18 @@ func main() {
 		groups[result.Group]++
 
 		pct := float64(result.Counter) / MaxCounter
-		elapsed := time.Since(start)
 		fmt.Printf(
-			"%02d %02d %02d %s %d\n",
+			"%02d %02d %02d %s %d %d\n",
 			solution.NumMoves, solution.NumSteps, len(unsolved.Pieces),
-			key, solution.MemoSize)
+			key, solution.MemoSize, result.Group)
 		fmt.Fprintf(
 			os.Stderr, "[%.9f] %d in, %d cn, %d nt, %d mn, %d dt, %d gp - %s\n",
 			pct, jobCount, canonicalCount, nonTrivialCount, minimalCount,
-			len(seen), len(groups), elapsed)
+			len(seen), len(groups), time.Since(start))
 	}
+
+	fmt.Fprintf(
+		os.Stderr, "[%.9f] %d in, %d cn, %d nt, %d mn, %d dt, %d gp - %s\n",
+		1.0, jobCount, canonicalCount, nonTrivialCount, minimalCount,
+		len(seen), len(groups), time.Since(start))
 }
