@@ -159,14 +159,3 @@ bool operator<(const Board &b1, const Board &b2) {
     }
     return b1.HorzMask() < b2.HorzMask();
 }
-
-size_t Board::operator()(const Board &board) const {
-    return std::hash<bb>()(board.HorzMask()) ^ std::hash<bb>()(board.VertMask());
-}
-
-bool Board::operator==(const Board& other) const {
-    return HorzMask() == other.HorzMask() && VertMask() == other.VertMask();
-// return (name == other.name)
-// && (options == other.options)
-// && (foobar == other.foobar);
-}

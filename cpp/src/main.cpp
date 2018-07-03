@@ -4,36 +4,41 @@
 
 #include "board.h"
 #include "config.h"
+#include "enumerator.h"
+
+using namespace std;
 
 void print(const Board &board) {
-    std::cout << board << std::endl;
-    std::cout << BitboardString(board.Mask()) << std::endl;
-    std::cout << BitboardString(board.HorzMask()) << std::endl;
-    std::cout << BitboardString(board.VertMask()) << std::endl;
-    std::cout << std::endl;
+    cout << board << endl;
+    cout << BitboardString(board.Mask()) << endl;
+    cout << BitboardString(board.HorzMask()) << endl;
+    cout << BitboardString(board.VertMask()) << endl;
+    cout << endl;
 }
 
 int main() {
+    Enumerator enumerator;
+
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
     Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
 
-    std::vector<Move> moves;
-    std::unordered_set<Board, BoardMaskHash, BoardMaskEqual> seen;
+    vector<Move> moves;
+    unordered_set<BoardKey> seen;
 
     for (int i = 0; i < 5000000; i++) {
         // if (board.Pieces()[0].Position() == Target) {
-        //     std::cout << i << std::endl;
+        //     cout << i << endl;
         //     break;
         // }
-        seen.insert(board);
+        seen.emplace(board.Key());
 
         board.Moves(moves);
-        const int index = std::rand() % moves.size();
+        const int index = rand() % moves.size();
         board.DoMove(moves[index]);
     }
 
     print(board);
-    std::cout << seen.size() << std::endl;
+    cout << seen.size() << endl;
 
     return 0;
 }
