@@ -29,7 +29,7 @@ Enumerator::Enumerator() {
 
 void Enumerator::Enumerate(EnumeratorFunc func) {
     Board board;
-    uint64_t counter;
+    uint64_t counter = 0;
     PopulatePrimaryRow(func, board, counter);
 }
 
@@ -67,7 +67,9 @@ void Enumerator::PopulateRow(
         for (const auto &piece : pe.Pieces()) {
             board.AddPiece(piece);
         }
-        PopulateRow(func, board, counter, y + 1, mask | pe.Mask(), require | pe.Require(), group + pe.Group());
+        PopulateRow(
+            func, board, counter, y + 1,
+            mask | pe.Mask(), require | pe.Require(), group + pe.Group());
         for (int i = 0; i < pe.Pieces().size(); i++) {
             board.PopPiece();
         }
@@ -94,7 +96,9 @@ void Enumerator::PopulateCol(
         for (const auto &piece : pe.Pieces()) {
             board.AddPiece(piece);
         }
-        PopulateCol(func, board, counter, x + 1, mask | pe.Mask(), require | pe.Require(), group + pe.Group());
+        PopulateCol(
+            func, board, counter, x + 1,
+            mask | pe.Mask(), require | pe.Require(), group + pe.Group());
         for (int i = 0; i < pe.Pieces().size(); i++) {
             board.PopPiece();
         }

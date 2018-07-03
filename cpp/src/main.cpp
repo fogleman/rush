@@ -5,6 +5,7 @@
 #include "board.h"
 #include "config.h"
 #include "enumerator.h"
+#include "search.h"
 
 using namespace std;
 
@@ -16,37 +17,38 @@ void print(const Board &board) {
     // cout << endl;
 }
 
-void handler(uint64_t counter, int group, const Board &board) {
-    if (counter % 1000000 == 0) {
-        print(board);
-    }
-}
-
 int main() {
-    Enumerator enumerator;
-    enumerator.Enumerate(handler);
-    return 0;
+    // uint64_t lastCounter;
+    // Enumerator enumerator;
+    // enumerator.Enumerate([&](uint64_t counter, int group, const Board &board) {
+    //     lastCounter = counter;
+    // });
+    // cout << lastCounter << endl;
+    // return 0;
 
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
     Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
 
-    vector<Move> moves;
-    unordered_set<BoardKey> seen;
+    const int count = ReachableStates(board);
+    cout << count << endl;
 
-    for (int i = 0; i < 5000000; i++) {
-        // if (board.Pieces()[0].Position() == Target) {
-        //     cout << i << endl;
-        //     break;
-        // }
-        seen.emplace(board.Key());
+    // vector<Move> moves;
+    // unordered_set<BoardKey> seen;
 
-        board.Moves(moves);
-        const int index = rand() % moves.size();
-        board.DoMove(moves[index]);
-    }
+    // for (int i = 0; i < 5000000; i++) {
+    //     // if (board.Pieces()[0].Position() == Target) {
+    //     //     cout << i << endl;
+    //     //     break;
+    //     // }
+    //     seen.emplace(board.Key());
 
-    print(board);
-    cout << seen.size() << endl;
+    //     board.Moves(moves);
+    //     const int index = rand() % moves.size();
+    //     board.DoMove(moves[index]);
+    // }
+
+    // print(board);
+    // cout << seen.size() << endl;
 
     return 0;
 }
