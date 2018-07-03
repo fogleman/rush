@@ -15,7 +15,7 @@ const int V = BoardSize; // vertical stride
 
 const bb RightColumn = []() {
     bb result = 0;
-    for (int y = 0; y <= BoardSize; y++) { // TODO: = needed?
+    for (int y = 0; y < BoardSize; y++) {
         result |= (bb)1 << (y * BoardSize + BoardSize - 1);
     }
     return result;
