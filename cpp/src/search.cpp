@@ -1,22 +1,28 @@
 #include "search.h"
 
+#include <limits>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
 
+/*
+canonical?
+solvable?
+canonical unsolved board
+max distance
+distance counts
+# of reachable states
+*/
+
 int ReachableStates(const Board &input) {
     bool canonical = true;
-
-    std::unordered_set<BoardKey> seen;
-    seen.emplace(input.Key());
-
+    std::vector<Move> moves;
     std::list<Board> queue;
     queue.push_back(input);
-
-    std::unordered_map<BoardKey, int> distance;
     std::list<Board> unsolveQueue;
-
-    std::vector<Move> moves;
+    std::unordered_map<BoardKey, int> distance;
+    distance[input.Key()] = -1;
+    const int sentinel = std::numeric_limits<int>::max();
     while (!queue.empty()) {
         Board &board = queue.front();
         if (canonical && board < input) {
@@ -30,7 +36,7 @@ int ReachableStates(const Board &input) {
         board.Moves(moves);
         for (const auto &move : moves) {
             board.DoMove(move);
-            if (seen.emplace(board.Key()).second) {
+            if (distance.emplace(std::make_pair(board.Key(), sentinel)).second) {
                 queue.push_back(board);
             }
             board.UndoMove(move);
@@ -44,7 +50,6 @@ int ReachableStates(const Board &input) {
     }
 
     int maxDistance = 0;
-    int maxDistanceCount = 1;
     Board maxDistanceBoard(input);
     while (!unsolveQueue.empty()) {
         Board &board = unsolveQueue.front();
@@ -53,15 +58,13 @@ int ReachableStates(const Board &input) {
         for (const auto &move : moves) {
             board.DoMove(move);
             const auto item = distance.find(board.Key());
-            if (item == distance.end() || item->second > d) {
-                distance[board.Key()] = d;
+            if (item->second > d) {
+                item->second = d;
                 unsolveQueue.push_back(board);
                 if (d > maxDistance) {
                     maxDistance = d;
-                    maxDistanceCount = 1;
                     maxDistanceBoard = board;
                 } else if (d == maxDistance) {
-                    maxDistanceCount++;
                     if (board < maxDistanceBoard) {
                         maxDistanceBoard = board;
                     }
@@ -77,11 +80,11 @@ int ReachableStates(const Board &input) {
         distanceCounts[item.second]++;
     }
 
-    std::cout << maxDistance << " " << maxDistanceCount << std::endl;
+    std::cout << maxDistance << std::endl;
 
     for (int i = 0; i <= maxDistance; i++) {
         std::cout << i << " " << distanceCounts[i] << std::endl;
     }
 
-    return seen.size();
+    return distance.size();
 }
