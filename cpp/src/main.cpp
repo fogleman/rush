@@ -3,9 +3,9 @@
 #include <unordered_set>
 
 #include "board.h"
+#include "cluster.h"
 #include "config.h"
 #include "enumerator.h"
-#include "search.h"
 
 using namespace std;
 
@@ -25,16 +25,34 @@ int main() {
     // return 0;
 
     // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
-    // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+    Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
 
     // 15 32 12 BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ... 541934
-    Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
+    // Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
 
     // 24 43 13 B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM 278666
     // Board board("B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM");
 
-    const int count = ReachableStates(board);
-    cout << count << endl;
+    Cluster cluster(board);
+
+    cout << "canonical: " << cluster.Canonical() << endl;
+    cout << "solvable:  " << cluster.Solvable() << endl;
+    cout << "states:    " << cluster.NumStates() << endl;
+    cout << "moves:     " << cluster.NumMoves() << endl;
+    cout << "counts:    ";
+
+    for (int count : cluster.DistanceCounts()) {
+        cout << count << ",";
+    }
+    cout << endl;
+    cout << endl;
+
+    cout << "input:" << endl;
+    cout << cluster.Input().String2D() << endl;
+    cout << "unsolved:" << endl;
+    cout << cluster.Unsolved().String2D() << endl;
+    cout << "solved:" << endl;
+    cout << cluster.Solved().String2D() << endl;
 
     return 0;
 }

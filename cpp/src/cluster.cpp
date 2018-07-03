@@ -1,35 +1,46 @@
-#include "search.h"
+#include "cluster.h"
 
 #include <limits>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
 
-/*
-canonical?
-solvable?
-canonical unsolved board
-max distance
-distance counts
-# of reachable states
-*/
-
-int ReachableStates(const Board &input) {
-    bool canonical = true;
+Cluster::Cluster(const Board &input) :
+    m_Canonical(true),
+    m_Solvable(false),
+    m_NumStates(0),
+    m_Input(input)
+{
+    // move generation buffer
     std::vector<Move> moves;
+
+    // exploration queue
     std::list<Board> queue;
     queue.push_back(input);
+
+    // unsolve queue
     std::list<Board> unsolveQueue;
-    std::unordered_map<BoardKey, int> distance;
-    distance[input.Key()] = -1;
+
+    // large sentinel distance when distance is not yet known
     const int sentinel = std::numeric_limits<int>::max();
+
+    // maps keys to distance from nearest goal state
+    std::unordered_map<BoardKey, int> distance;
+    distance[input.Key()] = sentinel;
+
+    // explore reachable nodes
     while (!queue.empty()) {
         Board &board = queue.front();
-        if (canonical && board < input) {
-            canonical = false;
-            // break;
+        if (board < input) {
+            // not canonical, exit early
+            m_Canonical = false;
+            // return;
         }
         if (board.Solved()) {
+            if (!m_Solvable || board < m_Solved) {
+                m_Solved = board;
+            }
+            m_Solvable = true;
             distance[board.Key()] = 0;
             unsolveQueue.push_back(board);
         }
@@ -44,13 +55,16 @@ int ReachableStates(const Board &input) {
         queue.pop_front();
     }
 
-    const int solvedCount = distance.size();
-    if (solvedCount == 0) {
-        // not solvable
+    m_NumStates = distance.size();
+
+    if (!m_Solvable) {
+        // nothing else to do if it's not solvable
+        return;
     }
 
+    // determine how far each state is from a goal state
     int maxDistance = 0;
-    Board maxDistanceBoard(input);
+    m_Unsolved = m_Input;
     while (!unsolveQueue.empty()) {
         Board &board = unsolveQueue.front();
         const int d = distance[board.Key()] + 1;
@@ -63,10 +77,10 @@ int ReachableStates(const Board &input) {
                 unsolveQueue.push_back(board);
                 if (d > maxDistance) {
                     maxDistance = d;
-                    maxDistanceBoard = board;
+                    m_Unsolved = board;
                 } else if (d == maxDistance) {
-                    if (board < maxDistanceBoard) {
-                        maxDistanceBoard = board;
+                    if (board < m_Unsolved) {
+                        m_Unsolved = board;
                     }
                 }
             }
@@ -75,16 +89,9 @@ int ReachableStates(const Board &input) {
         unsolveQueue.pop_front();
     }
 
-    std::vector<int> distanceCounts(maxDistance + 1);
+    // record number of states by distance to goal
+    m_Distances.resize(maxDistance + 1);
     for (const auto &item : distance) {
-        distanceCounts[item.second]++;
+        m_Distances[item.second]++;
     }
-
-    std::cout << maxDistance << std::endl;
-
-    for (int i = 0; i <= maxDistance; i++) {
-        std::cout << i << " " << distanceCounts[i] << std::endl;
-    }
-
-    return distance.size();
 }
