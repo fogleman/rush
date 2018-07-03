@@ -74,6 +74,7 @@ public:
 
     void AddPiece(const Piece &piece);
     void PopPiece();
+    void RemovePiece(const int i);
 
     void DoMove(const int piece, const int steps);
     void DoMove(const Move &move);

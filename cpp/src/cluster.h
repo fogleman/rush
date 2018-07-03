@@ -24,6 +24,10 @@ public:
         return m_Solvable;
     }
 
+    bool Minimal() const {
+        return m_Minimal;
+    }
+
     int NumStates() const {
         return m_NumStates;
     }
@@ -57,6 +61,7 @@ private:
     uint64_t m_Group;
     bool m_Canonical;
     bool m_Solvable;
+    bool m_Minimal;
     int m_NumStates;
     Board m_Solved;
     Board m_Unsolved;

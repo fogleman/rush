@@ -5,11 +5,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "solver.h"
+
 Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     m_ID(id),
     m_Group(group),
     m_Canonical(true),
     m_Solvable(false),
+    m_Minimal(true),
     m_NumStates(0)
 {
     // move generation buffer
@@ -94,5 +97,16 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     m_Distances.resize(maxDistance + 1);
     for (const auto &item : distance) {
         m_Distances[item.second]++;
+    }
+
+    // determine if unsolved board is minimal
+    for (int i = 1; i < m_Unsolved.Pieces().size(); i++) {
+        Board board(m_Unsolved);
+        board.RemovePiece(i);
+        const int numMoves = Solver(board).Solve();
+        if (numMoves == maxDistance) {
+            m_Minimal = false;
+            break;
+        }
     }
 }

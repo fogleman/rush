@@ -9,6 +9,7 @@
 #include "cluster.h"
 #include "config.h"
 #include "enumerator.h"
+#include "solver.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -31,7 +32,7 @@ int main() {
     uint64_t maxSeenID = 0;
     auto start = steady_clock::now();
     auto callback = [&](const Cluster &c) {
-        if (!c.Canonical() || !c.Solvable()) {
+        if (!c.Canonical() || !c.Solvable() || !c.Minimal()) {
             return;
         }
         maxSeenID = std::max(maxSeenID, c.ID());
@@ -55,9 +56,19 @@ int main() {
         threads[wi].join();
     }
     return 0;
+}
 
+int main2() {
     // // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
-    // // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+    Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+
+    for (int i = 0; i < 100; i++) {
+        Solver solver(board);
+        solver.Solve();
+    }
+    // Solver solver(board);
+    // const int numMoves = solver.Solve();
+    // cout << numMoves << endl;
 
     // // 15 32 12 BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ... 541934
     // Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
@@ -84,5 +95,5 @@ int main() {
     // cout << "solved:" << endl;
     // cout << cluster.Solved().String2D() << endl;
 
-    // return 0;
+    return 0;
 }

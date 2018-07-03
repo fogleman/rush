@@ -78,6 +78,17 @@ void Board::PopPiece() {
     m_Pieces.pop_back();
 }
 
+void Board::RemovePiece(const int i) {
+    const auto &piece = m_Pieces[i];
+    m_Mask &= ~piece.Mask();
+    if (piece.Stride() == H) {
+        m_HorzMask &= ~piece.Mask();
+    } else {
+        m_VertMask &= ~piece.Mask();
+    }
+    m_Pieces.erase(m_Pieces.begin() + i);
+}
+
 void Board::DoMove(const int index, const int steps) {
     auto &piece = m_Pieces[index];
     m_Mask &= ~piece.Mask();
