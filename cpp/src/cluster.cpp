@@ -10,9 +10,9 @@
 Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     m_ID(id),
     m_Group(group),
-    m_Canonical(true),
+    m_Canonical(false),
     m_Solvable(false),
-    m_Minimal(true),
+    m_Minimal(false),
     m_NumStates(0)
 {
     // move generation buffer
@@ -37,7 +37,6 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
         Board &board = queue.front();
         if (board < input) {
             // not canonical, exit early
-            m_Canonical = false;
             return;
         }
         if (board.Solved()) {
@@ -59,6 +58,7 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
         queue.pop_front();
     }
 
+    m_Canonical = true;
     m_NumStates = distance.size();
 
     if (!m_Solvable) {
@@ -105,8 +105,8 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
         board.RemovePiece(i);
         const int numMoves = Solver(board).Solve();
         if (numMoves == maxDistance) {
-            m_Minimal = false;
-            break;
+            return;
         }
     }
+    m_Minimal = true;
 }

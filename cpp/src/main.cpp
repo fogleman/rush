@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <thread>
 
 #include "board.h"
@@ -30,21 +31,54 @@ void worker(const int wi, const int wn, CallbackFunc func) {
 int main() {
     const uint64_t maxID = 243502785;
     uint64_t maxSeenID = 0;
+
+    mutex m;
+
     auto start = steady_clock::now();
+
+    uint64_t numIn = 0;
+    uint64_t numCanonical = 0;
+    uint64_t numSolvable = 0;
+    uint64_t numMinimal = 0;
+
     auto callback = [&](const Cluster &c) {
+        lock_guard<mutex> lock(m);
+
+        numIn++;
+        if (c.Canonical()) numCanonical++;
+        if (c.Solvable()) numSolvable++;
+        if (c.Minimal()) numMinimal++;
         if (!c.Canonical() || !c.Solvable() || !c.Minimal()) {
             return;
         }
+
         maxSeenID = std::max(maxSeenID, c.ID());
         const Board &unsolved = c.Unsolved();
         const double pct = (double)maxSeenID / (double)maxID;
         const double sec = duration<double>(steady_clock::now() - start).count();
-        // TODO: mutex
+
+        // print results to stdout
         printf(
-            "%.6f %.3f %lld %lld %02d %02d %s %d\n",
-            pct, sec, c.ID(), c.Group(), c.NumMoves(),
-            (int)unsolved.Pieces().size(), unsolved.String().c_str(),
+            "%02d %02d %s %lld %lld %d ",
+            c.NumMoves(),
+            (int)unsolved.Pieces().size(),
+            unsolved.String().c_str(),
+            c.ID(),
+            c.Group(),
             c.NumStates());
+        for (int i = 0; i < c.DistanceCounts().size(); i++) {
+            if (i != 0) {
+                printf(",");
+            }
+            printf("%d", c.DistanceCounts()[i]);
+        }
+        printf("\n");
+
+        // print progress info to stderr
+        fprintf(
+            stderr,
+            "%.6f pct %.3f sec - %lld inp %lld can %lld slv %lld min\n",
+            pct, sec, numIn, numCanonical, numSolvable, numMinimal);
     };
 
     std::vector<std::thread> threads;
