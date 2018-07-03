@@ -35,7 +35,7 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
         if (board < input) {
             // not canonical, exit early
             m_Canonical = false;
-            // return;
+            return;
         }
         if (board.Solved()) {
             if (!m_Solvable || board < m_Solved) {
