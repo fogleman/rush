@@ -27,14 +27,16 @@ int main() {
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
     Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
 
-    const int count = ReachableStates(board, 0);
-    cout << count << endl;
+    while (1) {
+        const int count = ReachableStates(board, 0);
+        cout << count << endl;
+    }
 
     // vector<Move> moves;
     // unordered_set<BoardKey> seen;
 
     // for (int i = 0; i < 5000000; i++) {
-    //     // if (board.Pieces()[0].Position() == Target) {
+    //     // if (board.Solved()) {
     //     //     cout << i << endl;
     //     //     break;
     //     // }

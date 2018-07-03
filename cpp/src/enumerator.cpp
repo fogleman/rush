@@ -109,8 +109,7 @@ void Enumerator::ComputeGroups(std::vector<int> &sizes, int sum) {
     if (sum >= BoardSize) {
         return;
     }
-    std::vector<int> sizesCopy(sizes);
-    m_Groups.emplace_back(sizesCopy);
+    m_Groups.push_back(sizes);
     for (int s = MinPieceSize; s <= MaxPieceSize; s++) {
         sizes.push_back(s);
         ComputeGroups(sizes, sum + s);

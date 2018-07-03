@@ -66,6 +66,10 @@ public:
         return m_Pieces;
     }
 
+    bool Solved() const {
+        return m_Pieces[0].Position() == Target;
+    }
+
     void AddPiece(const Piece &piece);
     void PopPiece();
 

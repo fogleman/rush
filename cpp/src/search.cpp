@@ -21,7 +21,7 @@ int ReachableStates(const Board &input, uint64_t counter) {
             canonical = false;
             // break;
         }
-        if (board.Pieces()[0].Position() == Target) {
+        if (board.Solved()) {
             solvedStates++;
         }
         board.Moves(moves);
