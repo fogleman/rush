@@ -1,6 +1,9 @@
+#include <chrono>
+#include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
-#include <unordered_set>
+#include <thread>
 
 #include "board.h"
 #include "cluster.h"
@@ -8,62 +11,78 @@
 #include "enumerator.h"
 
 using namespace std;
+using namespace std::chrono;
 
-void print(const Board &board) {
-    cout << board << endl;
-    // cout << BitboardString(board.Mask()) << endl;
-    // cout << BitboardString(board.HorzMask()) << endl;
-    // cout << BitboardString(board.VertMask()) << endl;
-    // cout << endl;
+typedef std::function<void(const Cluster &)> CallbackFunc;
+
+void worker(const int wi, const int wn, CallbackFunc func) {
+    Enumerator enumerator;
+    enumerator.Enumerate([&](uint64_t id, uint64_t group, const Board &board) {
+        if (id % wn != wi) {
+            return;
+        }
+        Cluster cluster(id, group, board);
+        func(cluster);
+    });
 }
 
 int main() {
-    Enumerator enumerator;
-    // 362,797,056
-    // for (int g = enumerator.NumGroups() - 1; ; g--) {
-    // for (int g = 0; ; g++) {
-    //     enumerator.EnumerateGroup(g, [&](uint64_t counter, int group, const Board &board) {
-    //         cout << group << endl;
-    //         cout << board.String2D() << endl;
-    //     });
-    // }
-    enumerator.EnumerateGroup(11000,[&](uint64_t counter, int group, const Board &board) {
-        if (group == 11000) {
-            cout << group << " " << counter << endl;
-            cout << board.String2D() << endl;
+    const uint64_t maxID = 243502785;
+    uint64_t maxSeenID = 0;
+    auto start = steady_clock::now();
+    auto callback = [&](const Cluster &c) {
+        if (!c.Canonical() || !c.Solvable()) {
+            return;
         }
-    });
-    return 0;
+        maxSeenID = std::max(maxSeenID, c.ID());
+        const Board &unsolved = c.Unsolved();
+        const double pct = (double)maxSeenID / (double)maxID;
+        const double sec = duration<double>(steady_clock::now() - start).count();
+        // TODO: mutex
+        printf(
+            "%.6f %.3f %lld %lld %02d %02d %s %d\n",
+            pct, sec, c.ID(), c.Group(), c.NumMoves(),
+            (int)unsolved.Pieces().size(), unsolved.String().c_str(),
+            c.NumStates());
+    };
 
-    // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
-    // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
-
-    // 15 32 12 BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ... 541934
-    Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
-
-    // 24 43 13 B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM 278666
-    // Board board("B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM");
-
-    Cluster cluster(board);
-
-    cout << "canonical: " << cluster.Canonical() << endl;
-    cout << "solvable:  " << cluster.Solvable() << endl;
-    cout << "states:    " << cluster.NumStates() << endl;
-    cout << "moves:     " << cluster.NumMoves() << endl;
-    cout << "counts:    ";
-
-    for (int count : cluster.DistanceCounts()) {
-        cout << count << ",";
+    std::vector<std::thread> threads;
+    const int wn = 4;
+    for (int wi = 0; wi < wn; wi++) {
+        threads.push_back(std::thread(worker, wi, wn, callback));
     }
-    cout << endl;
-    cout << endl;
-
-    cout << "input:" << endl;
-    cout << cluster.Input().String2D() << endl;
-    cout << "unsolved:" << endl;
-    cout << cluster.Unsolved().String2D() << endl;
-    cout << "solved:" << endl;
-    cout << cluster.Solved().String2D() << endl;
-
+    for (int wi = 0; wi < wn; wi++) {
+        threads[wi].join();
+    }
     return 0;
+
+    // // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
+    // // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+
+    // // 15 32 12 BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ... 541934
+    // Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
+
+    // // 24 43 13 B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM 278666
+    // // Board board("B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM");
+
+    // Cluster cluster(board);
+
+    // cout << "canonical: " << cluster.Canonical() << endl;
+    // cout << "solvable:  " << cluster.Solvable() << endl;
+    // cout << "states:    " << cluster.NumStates() << endl;
+    // cout << "moves:     " << cluster.NumMoves() << endl;
+    // cout << "counts:    ";
+
+    // for (int count : cluster.DistanceCounts()) {
+    //     cout << count << ",";
+    // }
+    // cout << endl;
+    // cout << endl;
+
+    // cout << "unsolved:" << endl;
+    // cout << cluster.Unsolved().String2D() << endl;
+    // cout << "solved:" << endl;
+    // cout << cluster.Solved().String2D() << endl;
+
+    // return 0;
 }

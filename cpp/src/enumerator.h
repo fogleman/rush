@@ -34,36 +34,36 @@ private:
     bb m_Require;
 };
 
-typedef std::function<void(uint64_t counter, int group, const Board &)> EnumeratorFunc;
+typedef std::function<void(uint64_t id, uint64_t group, const Board &)> EnumeratorFunc;
 
 class Enumerator {
 public:
     Enumerator();
 
     void Enumerate(EnumeratorFunc func);
-    void EnumerateGroup(const int group, EnumeratorFunc func);
+    void EnumerateGroup(const uint64_t group, EnumeratorFunc func);
 
     int NumGroups() const;
 
 private:
     void PopulatePrimaryRow(
-        EnumeratorFunc func, Board &board, uint64_t &counter) const;
+        EnumeratorFunc func, Board &board, uint64_t &id) const;
     void PopulateRow(
-        EnumeratorFunc func, Board &board, uint64_t &counter, int y,
-        bb mask, bb require, int group) const;
+        EnumeratorFunc func, Board &board, uint64_t &id, int y,
+        bb mask, bb require, uint64_t group) const;
     void PopulateCol(
-        EnumeratorFunc func, Board &board, uint64_t &counter, int x,
-        bb mask, bb require, int group) const;
+        EnumeratorFunc func, Board &board, uint64_t &id, int x,
+        bb mask, bb require, uint64_t group) const;
 
     void PopulateGroupPrimaryRow(
-        const int group, EnumeratorFunc func, Board &board, uint64_t &counter) const;
+        const uint64_t group, EnumeratorFunc func, Board &board, uint64_t &id) const;
     void PopulateGroupRow(
-        const int group, const int digit,
-        EnumeratorFunc func, Board &board, uint64_t &counter,
+        const uint64_t group, const int digit,
+        EnumeratorFunc func, Board &board, uint64_t &id,
         int y, bb mask, bb require) const;
     void PopulateGroupCol(
-        const int group, const int digit,
-        EnumeratorFunc func, Board &board, uint64_t &counter,
+        const uint64_t group, const int digit,
+        EnumeratorFunc func, Board &board, uint64_t &id,
         int x, bb mask, bb require) const;
 
     void ComputeGroups(std::vector<int> &sizes, int sum);

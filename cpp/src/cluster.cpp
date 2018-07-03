@@ -5,11 +5,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
-Cluster::Cluster(const Board &input) :
+Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
+    m_ID(id),
+    m_Group(group),
     m_Canonical(true),
     m_Solvable(false),
-    m_NumStates(0),
-    m_Input(input)
+    m_NumStates(0)
 {
     // move generation buffer
     std::vector<Move> moves;
@@ -64,7 +65,7 @@ Cluster::Cluster(const Board &input) :
 
     // determine how far each state is from a goal state
     int maxDistance = 0;
-    m_Unsolved = m_Input;
+    m_Unsolved = input;
     while (!unsolveQueue.empty()) {
         Board &board = unsolveQueue.front();
         const int d = distance[board.Key()] + 1;

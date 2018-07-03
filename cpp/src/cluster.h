@@ -6,7 +6,15 @@
 
 class Cluster {
 public:
-    Cluster(const Board &input);
+    Cluster(const uint64_t id, const uint64_t group, const Board &input);
+
+    uint64_t ID() const {
+        return m_ID;
+    }
+
+    uint64_t Group() const {
+        return m_Group;
+    }
 
     bool Canonical() const {
         return m_Canonical;
@@ -32,10 +40,6 @@ public:
         return m_Distances.back();
     }
 
-    const Board &Input() const {
-        return m_Input;
-    }
-
     const Board &Solved() const {
         return m_Solved;
     }
@@ -49,10 +53,11 @@ public:
     }
 
 private:
+    uint64_t m_ID;
+    uint64_t m_Group;
     bool m_Canonical;
     bool m_Solvable;
     int m_NumStates;
-    Board m_Input;
     Board m_Solved;
     Board m_Unsolved;
     std::vector<int> m_Distances;
