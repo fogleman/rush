@@ -20,17 +20,20 @@ void print(const Board &board) {
 int main() {
     // Enumerator enumerator;
     // enumerator.Enumerate([&](uint64_t counter, int group, const Board &board) {
-    //     ReachableStates(board, counter);
+    //     ReachableStates(board);
     // });
     // return 0;
 
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
-    Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
+    // Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
 
-    while (1) {
-        const int count = ReachableStates(board, 0);
+    // 24 43 13 B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM 278666
+    Board board("B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM");
+
+    // while (1) {
+        const int count = ReachableStates(board);
         cout << count << endl;
-    }
+    // }
 
     // vector<Move> moves;
     // unordered_set<BoardKey> seen;
