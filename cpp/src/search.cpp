@@ -36,7 +36,8 @@ int ReachableStates(const Board &input, uint64_t counter) {
     }
 
     // if (canonical && solvedStates > 0) {
-        std::cout << counter << " " << canonical << " " << input << " " << seen.size() << " " << solvedStates << std::endl;
+        // std::cout << counter << " " << canonical << " " << input << " " << seen.size() << " " << solvedStates << std::endl;
+    std::cout << input.String2D() << std::endl;
     // }
 
     return seen.size();

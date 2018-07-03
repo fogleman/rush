@@ -33,6 +33,8 @@ private:
     bb m_VertMask;
 };
 
+bool operator<(const BoardKey &k1, const BoardKey &k2);
+
 namespace std {
     template<> struct hash<BoardKey> {
         size_t operator()(const BoardKey &b) const {
@@ -80,6 +82,7 @@ public:
     void Moves(std::vector<Move> &moves) const;
 
     std::string String() const;
+    std::string String2D() const;
 
 private:
     bb m_Mask;

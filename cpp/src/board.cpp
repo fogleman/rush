@@ -153,6 +153,30 @@ std::string Board::String() const {
     return s;
 }
 
+std::string Board::String2D() const {
+    std::string s(BoardSize * (BoardSize + 1), '.');
+    for (int y = 0; y < BoardSize; y++) {
+        const int p = y * (BoardSize + 1) + BoardSize;
+        s[p] = '\n';
+    }
+    for (int i = 0; i < m_Pieces.size(); i++) {
+        const Piece &piece = m_Pieces[i];
+        const char c = 'A' + i;
+        int stride = piece.Stride();
+        if (stride == V) {
+            stride++;
+        }
+        const int y = piece.Position() / BoardSize;
+        const int x = piece.Position() % BoardSize;
+        int p = y * (BoardSize + 1) + x;
+        for (int i = 0; i < piece.Size(); i++) {
+            s[p] = c;
+            p += stride;
+        }
+    }
+    return s;
+}
+
 std::ostream& operator<<(std::ostream &stream, const Board &board) {
     return stream << board.String();
 }
@@ -162,4 +186,11 @@ bool operator<(const Board &b1, const Board &b2) {
         return b1.VertMask() < b2.VertMask();
     }
     return b1.HorzMask() < b2.HorzMask();
+}
+
+bool operator<(const BoardKey &k1, const BoardKey &k2) {
+    if (k1.HorzMask() == k2.HorzMask()) {
+        return k1.VertMask() < k2.VertMask();
+    }
+    return k1.HorzMask() < k2.HorzMask();
 }
