@@ -55,7 +55,8 @@ int main() {
         maxSeenID = std::max(maxSeenID, c.ID());
         const Board &unsolved = c.Unsolved();
         const double pct = (double)maxSeenID / (double)maxID;
-        const double sec = duration<double>(steady_clock::now() - start).count();
+        const double hrs = duration<double>(steady_clock::now() - start).count() / 3600;
+        const double est = pct > 0 ? hrs / pct : 0;
 
         // print results to stdout
         printf(
@@ -77,8 +78,8 @@ int main() {
         // print progress info to stderr
         fprintf(
             stderr,
-            "%.6f pct %.3f sec - %lld inp %lld can %lld slv %lld min\n",
-            pct, sec, numIn, numCanonical, numSolvable, numMinimal);
+            "%.6f pct %.3f hrs %.3f est - %lld inp %lld can %lld slv %lld min\n",
+            pct, hrs, est, numIn, numCanonical, numSolvable, numMinimal);
     };
 
     std::vector<std::thread> threads;
