@@ -15,6 +15,10 @@ Board::Board(std::string desc) :
     m_HorzMask(0),
     m_VertMask(0)
 {
+    if (desc.length() != BoardSize2) {
+        throw "board string is wrong length";
+    }
+
     std::map<char, std::vector<int>> positions;
     for (int i = 0; i < desc.length(); i++) {
         const char label = desc[i];

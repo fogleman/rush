@@ -18,17 +18,17 @@ void print(const Board &board) {
 }
 
 int main() {
-    Enumerator enumerator;
-    enumerator.Enumerate([&](uint64_t counter, int group, const Board &board) {
-        ReachableStates(board, counter);
-    });
-    return 0;
+    // Enumerator enumerator;
+    // enumerator.Enumerate([&](uint64_t counter, int group, const Board &board) {
+    //     ReachableStates(board, counter);
+    // });
+    // return 0;
 
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
     Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
 
-    // const int count = ReachableStates(board);
-    // cout << count << endl;
+    const int count = ReachableStates(board, 0);
+    cout << count << endl;
 
     // vector<Move> moves;
     // unordered_set<BoardKey> seen;

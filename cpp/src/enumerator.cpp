@@ -144,13 +144,9 @@ void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
             if (pieces.size() != 1) {
                 return;
             }
-            const auto &piece = pieces[0];
-            if (piece.Size() != PrimarySize) {
+            if (pieces[0].Size() != PrimarySize) {
                 return;
             }
-            // if (piece.Position() != Target) {
-            //     return;
-            // }
         }
         int n = 0;
         for (const auto &piece : pieces) {

@@ -19,7 +19,7 @@ int ReachableStates(const Board &input, uint64_t counter) {
         Board &board = queue.front();
         if (canonical && board < input) {
             canonical = false;
-            break;
+            // break;
         }
         if (board.Pieces()[0].Position() == Target) {
             solvedStates++;
@@ -35,9 +35,9 @@ int ReachableStates(const Board &input, uint64_t counter) {
         queue.pop_front();
     }
 
-    if (canonical && solvedStates > 0) {
+    // if (canonical && solvedStates > 0) {
         std::cout << counter << " " << canonical << " " << input << " " << seen.size() << " " << solvedStates << std::endl;
-    }
+    // }
 
     return seen.size();
 }
