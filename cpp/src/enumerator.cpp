@@ -1,5 +1,7 @@
 #include "enumerator.h"
 
+#include <cmath>
+
 #include "config.h"
 
 PositionEntry::PositionEntry(const int group, const std::vector<Piece> &pieces) :
@@ -33,8 +35,19 @@ void Enumerator::Enumerate(EnumeratorFunc func) {
     PopulatePrimaryRow(func, board, counter);
 }
 
+void Enumerator::EnumerateGroup(const int group, EnumeratorFunc func) {
+    Board board;
+    uint64_t counter = 0;
+    PopulateGroupPrimaryRow(group, func, board, counter);
+}
+
+int Enumerator::NumGroups() const {
+    const int n = BoardSize * 2 - 1;
+    return std::pow(m_Groups.size(), n);
+}
+
 void Enumerator::PopulatePrimaryRow(
-    EnumeratorFunc func, Board &board, uint64_t &counter)
+    EnumeratorFunc func, Board &board, uint64_t &counter) const
 {
     for (const auto &pe : m_RowEntries[PrimaryRow]) {
         for (const auto &piece : pe.Pieces()) {
@@ -49,7 +62,7 @@ void Enumerator::PopulatePrimaryRow(
 
 void Enumerator::PopulateRow(
     EnumeratorFunc func, Board &board, uint64_t &counter, int y,
-    bb mask, bb require, int group)
+    bb mask, bb require, int group) const
 {
     if (y >= BoardSize) {
         PopulateCol(func, board, counter, 0, mask, require, group);
@@ -78,7 +91,7 @@ void Enumerator::PopulateRow(
 
 void Enumerator::PopulateCol(
     EnumeratorFunc func, Board &board, uint64_t &counter, int x,
-    bb mask, bb require, int group)
+    bb mask, bb require, int group) const
 {
     if (x >= BoardSize) {
         if ((mask & require) != require) {
@@ -99,6 +112,88 @@ void Enumerator::PopulateCol(
         PopulateCol(
             func, board, counter, x + 1,
             mask | pe.Mask(), require | pe.Require(), group + pe.Group());
+        for (int i = 0; i < pe.Pieces().size(); i++) {
+            board.PopPiece();
+        }
+    }
+}
+
+void Enumerator::PopulateGroupPrimaryRow(
+    const int group, EnumeratorFunc func, Board &board, uint64_t &counter) const
+{
+    const int digit = BoardSize * 2 - 2;
+    for (const auto &pe : m_RowEntries[PrimaryRow]) {
+        for (const auto &piece : pe.Pieces()) {
+            board.AddPiece(piece);
+        }
+        PopulateGroupRow(
+            group, digit, func, board, counter, 0, pe.Mask(), pe.Require());
+        for (int i = 0; i < pe.Pieces().size(); i++) {
+            board.PopPiece();
+        }
+    }
+}
+
+void Enumerator::PopulateGroupRow(
+    const int group, const int digit,
+    EnumeratorFunc func, Board &board, uint64_t &counter,
+    int y, bb mask, bb require) const
+{
+    if (y >= BoardSize) {
+        PopulateGroupCol(group, digit, func, board, counter, 0, mask, require);
+        return;
+    }
+    if (y == PrimaryRow) {
+        PopulateGroupRow(group, digit, func, board, counter, y + 1, mask, require);
+        return;
+    }
+    const int g = (int)(group / std::pow(m_Groups.size(), digit)) % m_Groups.size();
+    for (const auto &pe : m_RowEntries[y]) {
+        if (pe.Group() != g) {
+            continue;
+        }
+        if ((mask & pe.Mask()) != 0) {
+            continue;
+        }
+        for (const auto &piece : pe.Pieces()) {
+            board.AddPiece(piece);
+        }
+        PopulateGroupRow(
+            group, digit - 1, func, board, counter, y + 1,
+            mask | pe.Mask(), require | pe.Require());
+        for (int i = 0; i < pe.Pieces().size(); i++) {
+            board.PopPiece();
+        }
+    }
+}
+
+void Enumerator::PopulateGroupCol(
+    const int group, const int digit,
+    EnumeratorFunc func, Board &board, uint64_t &counter,
+    int x, bb mask, bb require) const
+{
+    if (x >= BoardSize) {
+        if ((mask & require) != require) {
+            return;
+        }
+        func(counter, group, board);
+        counter++;
+        return;
+    }
+    const int g = (int)(group / std::pow(m_Groups.size(), digit)) % m_Groups.size();
+    for (const auto &pe : m_ColEntries[x]) {
+        if (pe.Group() != g) {
+            continue;
+        }
+        if ((mask & pe.Mask()) != 0) {
+            continue;
+        }
+        for (const auto &piece : pe.Pieces()) {
+            board.AddPiece(piece);
+        }
+        PopulateGroupCol(
+            group, digit - 1, func, board, counter, x + 1,
+            mask | pe.Mask(), require | pe.Require());
         for (int i = 0; i < pe.Pieces().size(); i++) {
             board.PopPiece();
         }

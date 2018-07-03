@@ -18,17 +18,28 @@ void print(const Board &board) {
 }
 
 int main() {
-    // Enumerator enumerator;
-    // enumerator.Enumerate([&](uint64_t counter, int group, const Board &board) {
-    //     ReachableStates(board);
-    // });
-    // return 0;
+    Enumerator enumerator;
+    // 362,797,056
+    // for (int g = enumerator.NumGroups() - 1; ; g--) {
+    // for (int g = 0; ; g++) {
+    //     enumerator.EnumerateGroup(g, [&](uint64_t counter, int group, const Board &board) {
+    //         cout << group << endl;
+    //         cout << board.String2D() << endl;
+    //     });
+    // }
+    enumerator.EnumerateGroup(11000,[&](uint64_t counter, int group, const Board &board) {
+        if (group == 11000) {
+            cout << group << " " << counter << endl;
+            cout << board.String2D() << endl;
+        }
+    });
+    return 0;
 
     // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
-    Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+    // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
 
     // 15 32 12 BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ... 541934
-    // Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
+    Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ...");
 
     // 24 43 13 B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM 278666
     // Board board("B..CDDBEEC.F.G.AAF.GHHIJKKL.IJ..L.MM");
