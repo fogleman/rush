@@ -10,14 +10,22 @@ using namespace std;
 
 void print(const Board &board) {
     cout << board << endl;
-    cout << BitboardString(board.Mask()) << endl;
-    cout << BitboardString(board.HorzMask()) << endl;
-    cout << BitboardString(board.VertMask()) << endl;
-    cout << endl;
+    // cout << BitboardString(board.Mask()) << endl;
+    // cout << BitboardString(board.HorzMask()) << endl;
+    // cout << BitboardString(board.VertMask()) << endl;
+    // cout << endl;
+}
+
+void handler(uint64_t counter, int group, const Board &board) {
+    if (counter % 1000000 == 0) {
+        print(board);
+    }
 }
 
 int main() {
     Enumerator enumerator;
+    enumerator.Enumerate(handler);
+    return 0;
 
     // Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM."); // 51 moves
     Board board("BB.C...D.CEE.DAAFGH.IIFGH.JKK.LLJ..."); // 541934 states
