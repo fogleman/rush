@@ -1,6 +1,4 @@
 #include <chrono>
-#include <cstdio>
-#include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <mutex>
@@ -59,27 +57,31 @@ int main() {
         const double est = pct > 0 ? hrs / pct : 0;
 
         // print results to stdout
-        printf(
-            "%02d %02d %s %lld %lld %d ",
-            c.NumMoves(),
-            (int)unsolved.Pieces().size(),
-            unsolved.String().c_str(),
-            c.ID(),
-            c.Group(),
-            c.NumStates());
+        cout
+            << c.NumMoves() << " "
+            << unsolved.Pieces().size() << " "
+            << unsolved << " "
+            << c.ID() << " "
+            << c.Group() << " "
+            << c.NumStates() << " ";
         for (int i = 0; i < c.DistanceCounts().size(); i++) {
             if (i != 0) {
-                printf(",");
+                cout << ",";
             }
-            printf("%d", c.DistanceCounts()[i]);
+            cout << c.DistanceCounts()[i];
         }
-        printf("\n");
+        cout << endl;
 
         // print progress info to stderr
-        fprintf(
-            stderr,
-            "%.6f pct %.3f hrs %.3f est - %lld inp %lld can %lld slv %lld min\n",
-            pct, hrs, est, numIn, numCanonical, numSolvable, numMinimal);
+        cerr
+            << pct << " pct "
+            << hrs << " hrs "
+            << est << " est - "
+            << numIn << " inp "
+            << numCanonical << " can "
+            << numSolvable << " slv "
+            << numMinimal << " min"
+            << endl;
     };
 
     std::vector<std::thread> threads;
