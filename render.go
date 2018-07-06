@@ -12,7 +12,7 @@ import (
 const (
 	showBlockedSquares = true
 	showPieceLabels    = true
-	showSolution       = false
+	showSolution       = true
 )
 
 const (
@@ -22,11 +22,11 @@ const (
 
 const (
 	backgroundColor   = "FFFFFF"
-	boardColor        = "F2EBC7"
+	boardColor        = "F2EACD"
 	blockedColor      = "D96D60"
-	gridLineColor     = "343642"
-	primaryPieceColor = "962D3E"
-	pieceColor        = "348899"
+	gridLineColor     = "222222"
+	primaryPieceColor = "CC3333"
+	pieceColor        = "338899"
 	pieceOutlineColor = "222222"
 	labelColor        = "222222"
 	wallColor         = "111111"
@@ -44,7 +44,7 @@ func renderBoard(board *Board) image.Image {
 	iw := w + padding*2
 	ih := h + padding*2
 	if showSolution {
-		ih += 88
+		ih += 120
 	}
 	dc := gg.NewContext(iw, ih)
 	dc.LoadFontFace(labelFont, 36)
