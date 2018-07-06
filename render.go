@@ -63,6 +63,14 @@ func renderBoard(board *Board) image.Image {
 		dc.SetHexColor(blockedColor)
 		dc.Fill()
 	}
+	ex := float64(bw) * S
+	ey := float64(board.Pieces[0].Row(bw))*S + S/2
+	es := float64(S) / 10
+	dc.LineTo(ex, ey+es)
+	dc.LineTo(ex, ey-es)
+	dc.LineTo(ex+es, ey)
+	dc.SetHexColor(gridLineColor)
+	dc.Fill()
 	p := S / 8.0
 	r := S / 32.0
 	for _, i := range board.Walls {
