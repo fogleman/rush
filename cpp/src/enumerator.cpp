@@ -1,5 +1,6 @@
 #include "enumerator.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "config.h"
