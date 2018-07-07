@@ -10,14 +10,16 @@ import (
 )
 
 const (
-	showBlockedSquares = true
-	showPieceLabels    = true
-	showSolution       = true
+	showBlockedSquares = false
+	showPieceLabels    = false
+	showSolution       = false
 )
 
 const (
-	cellSize = 160
-	padding  = 32
+	cellSize       = 160
+	padding        = 32
+	labelFontSize  = 36
+	footerFontSize = 24
 )
 
 const (
@@ -47,7 +49,7 @@ func renderBoard(board *Board) image.Image {
 		ih += 120
 	}
 	dc := gg.NewContext(iw, ih)
-	dc.LoadFontFace(labelFont, 36)
+	dc.LoadFontFace(labelFont, labelFontSize)
 	dc.Translate(padding, padding)
 	dc.SetHexColor(backgroundColor)
 	dc.Clear()
@@ -149,7 +151,7 @@ func renderBoard(board *Board) image.Image {
 			footer = fmt.Sprintf("%s (%d moves)",
 				strings.Join(moveStrings, " "), solution.NumMoves)
 		}
-		dc.LoadFontFace(footerFont, 24)
+		dc.LoadFontFace(footerFont, footerFontSize)
 		var tw float64
 		for _, line := range dc.WordWrap(footer, float64(w)) {
 			w, _ := dc.MeasureString(line)
