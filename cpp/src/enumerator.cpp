@@ -45,7 +45,7 @@ void Enumerator::EnumerateGroup(const uint64_t group, EnumeratorFunc func) {
     PopulateGroupPrimaryRow(group, func, board, id);
 }
 
-int Enumerator::NumGroups() const {
+uint64_t Enumerator::NumGroups() const {
     const int n = BoardSize * 2 - 1;
     return std::pow(m_Groups.size(), n);
 }

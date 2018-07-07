@@ -43,7 +43,7 @@ public:
     void Enumerate(EnumeratorFunc func);
     void EnumerateGroup(const uint64_t group, EnumeratorFunc func);
 
-    int NumGroups() const;
+    uint64_t NumGroups() const;
 
 private:
     void PopulatePrimaryRow(

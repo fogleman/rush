@@ -8,6 +8,13 @@ const int PrimarySize = 2;
 const int MinPieceSize = 1;
 const int MaxPieceSize = 3;
 const int MaxWalls = 1;
+const int NumWorkers = 4;
+
+// const uint64_t MaxID = 1149; // 4x4
+// const uint64_t MaxID = 268108; // 5x5
+// const uint64_t MaxID = 243502785; // 6x6
+// const uint64_t MaxID = 2689860; // 5x5, 1 wall
+const uint64_t MaxID = 3331773541; // 6x6, 1 wall
 
 const int BoardSize2 = BoardSize * BoardSize;
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
@@ -21,13 +28,3 @@ const bb RightColumn = []() {
     }
     return result;
 }();
-
-// C++
-// 1149
-// 268108
-// 243502785
-
-// Go
-// 695
-// 124886
-// 88914655

@@ -1,5 +1,6 @@
 #include <chrono>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <thread>
@@ -27,7 +28,14 @@ void worker(const int wi, const int wn, CallbackFunc func) {
 }
 
 int main() {
-    const uint64_t maxID = 243502785;
+    // uint64_t lastID = 0;
+    // Enumerator enumerator;
+    // enumerator.Enumerate([&](uint64_t id, uint64_t group, const Board &board) {
+    //     lastID = std::max(lastID, id);
+    // });
+    // cout << lastID << endl;
+    // return 0;
+
     uint64_t maxSeenID = 0;
 
     mutex m;
@@ -52,18 +60,18 @@ int main() {
 
         maxSeenID = std::max(maxSeenID, c.ID());
         const Board &unsolved = c.Unsolved();
-        const double pct = (double)maxSeenID / (double)maxID;
+        const double pct = (double)maxSeenID / (double)MaxID;
         const double hrs = duration<double>(steady_clock::now() - start).count() / 3600;
         const double est = pct > 0 ? hrs / pct : 0;
 
         // print results to stdout
         cout
-            << c.NumMoves() << " "
-            << unsolved.Pieces().size() << " "
+            << setfill('0')
+            << setw(2) << c.NumMoves() << " "
             << unsolved << " "
-            << c.ID() << " "
-            << c.Group() << " "
-            << c.NumStates() << " ";
+            << setw(10) << c.ID() << " "
+            << setfill(' ')
+            << setw(7) << c.NumStates() << " ";
         for (int i = 0; i < c.DistanceCounts().size(); i++) {
             if (i != 0) {
                 cout << ",";
@@ -73,19 +81,20 @@ int main() {
         cout << endl;
 
         // print progress info to stderr
-        // cerr
-        //     << pct << " pct "
-        //     << hrs << " hrs "
-        //     << est << " est - "
-        //     << numIn << " inp "
-        //     << numCanonical << " can "
-        //     << numSolvable << " slv "
-        //     << numMinimal << " min"
-        //     << endl;
+        cerr
+            << fixed
+            << pct << " pct "
+            << hrs << " hrs "
+            << est << " est - "
+            << numIn << " inp "
+            << numCanonical << " can "
+            << numSolvable << " slv "
+            << numMinimal << " min"
+            << endl;
     };
 
     std::vector<std::thread> threads;
-    const int wn = 4;
+    const int wn = NumWorkers;
     for (int wi = 0; wi < wn; wi++) {
         threads.push_back(std::thread(worker, wi, wn, callback));
     }
