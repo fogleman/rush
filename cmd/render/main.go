@@ -13,6 +13,7 @@ func main() {
 	args := os.Args[1:]
 	if len(args) != 1 && len(args) != 2 {
 		fmt.Println("render DESC [OUTPUT]")
+		return
 	}
 
 	board, err := rush.NewBoardFromString(args[0])
