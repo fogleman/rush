@@ -10,15 +10,19 @@ PositionEntry::PositionEntry(const int group, const std::vector<Piece> &pieces) 
     m_Mask(0),
     m_Require(0)
 {
+    bb movableMask = 0;
     for (const auto &piece : pieces) {
         m_Mask |= piece.Mask();
+        if (!piece.Fixed()) {
+            movableMask |= piece.Mask();
+        }
     }
     if (!pieces.empty()) {
         const int stride = pieces[0].Stride();
         if (stride == H) {
-            m_Require = (m_Mask >> stride) & ~m_Mask & ~RightColumn;
+            m_Require = (movableMask >> stride) & ~m_Mask & ~RightColumn;
         } else {
-            m_Require = (m_Mask >> stride) & ~m_Mask;
+            m_Require = (movableMask >> stride) & ~m_Mask;
         }
     }
 }
@@ -64,6 +68,15 @@ void Enumerator::PopulateRow(
     EnumeratorFunc func, Board &board, uint64_t &id, int y,
     bb mask, bb require, uint64_t group) const
 {
+    int walls = 0;
+    for (const auto &piece : board.Pieces()) {
+        if (piece.Fixed()) {
+            walls++;
+        }
+    }
+    if (walls > MaxWalls) {
+        return;
+    }
     if (y >= BoardSize) {
         PopulateCol(func, board, id, 0, mask, require, group);
         return;
@@ -243,8 +256,15 @@ void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
             }
         }
         int n = 0;
+        int walls = 0;
         for (const auto &piece : pieces) {
             n += piece.Size();
+            if (piece.Fixed()) {
+                walls++;
+            }
+        }
+        if (walls > MaxWalls) {
+            return;
         }
         if (n >= BoardSize) {
             return;
@@ -279,6 +299,10 @@ void Enumerator::ComputeCol(int x, int y, std::vector<Piece> &pieces) {
         return;
     }
     for (int s = MinPieceSize; s <= MaxPieceSize; s++) {
+        if (s == 1) {
+            // no "vertical" walls
+            continue;
+        }
         if (y + s > BoardSize) {
             continue;
         }

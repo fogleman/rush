@@ -31,7 +31,7 @@ const (
 	pieceColor        = "338899"
 	pieceOutlineColor = "222222"
 	labelColor        = "222222"
-	wallColor         = "111111"
+	wallColor         = "222222"
 )
 
 const labelFont = "/Library/Fonts/Arial.ttf"

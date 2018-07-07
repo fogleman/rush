@@ -23,6 +23,10 @@ public:
         return m_Mask;
     }
 
+    bool Fixed() const {
+        return m_Size == 1;
+    }
+
     void Move(int steps);
 
 private:

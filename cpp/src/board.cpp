@@ -116,6 +116,9 @@ void Board::Moves(std::vector<Move> &moves) const {
     moves.clear();
     for (int i = 0; i < m_Pieces.size(); i++) {
         const auto &piece = m_Pieces[i];
+        if (piece.Fixed()) {
+            continue;
+        }
         // compute range
         int forwardSteps, reverseSteps;
         if (piece.Stride() == H) {
@@ -154,7 +157,7 @@ std::string Board::String() const {
     std::string s(BoardSize2, '.');
     for (int i = 0; i < m_Pieces.size(); i++) {
         const Piece &piece = m_Pieces[i];
-        const char c = 'A' + i;
+        const char c = piece.Fixed() ? 'x' : 'A' + i;
         int p = piece.Position();
         for (int i = 0; i < piece.Size(); i++) {
             s[p] = c;
@@ -172,7 +175,7 @@ std::string Board::String2D() const {
     }
     for (int i = 0; i < m_Pieces.size(); i++) {
         const Piece &piece = m_Pieces[i];
-        const char c = 'A' + i;
+        const char c = piece.Fixed() ? 'x' : 'A' + i;
         int stride = piece.Stride();
         if (stride == V) {
             stride++;

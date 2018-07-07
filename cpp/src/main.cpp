@@ -73,15 +73,15 @@ int main() {
         cout << endl;
 
         // print progress info to stderr
-        cerr
-            << pct << " pct "
-            << hrs << " hrs "
-            << est << " est - "
-            << numIn << " inp "
-            << numCanonical << " can "
-            << numSolvable << " slv "
-            << numMinimal << " min"
-            << endl;
+        // cerr
+        //     << pct << " pct "
+        //     << hrs << " hrs "
+        //     << est << " est - "
+        //     << numIn << " inp "
+        //     << numCanonical << " can "
+        //     << numSolvable << " slv "
+        //     << numMinimal << " min"
+        //     << endl;
     };
 
     std::vector<std::thread> threads;
