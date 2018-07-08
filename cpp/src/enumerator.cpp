@@ -266,14 +266,6 @@ int Enumerator::GroupForPieces(const std::vector<Piece> &pieces) {
 
 void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
     if (x >= BoardSize) {
-        if (y == PrimaryRow) {
-            if (pieces.size() != 1) {
-                return;
-            }
-            if (pieces[0].Size() != PrimarySize) {
-                return;
-            }
-        }
         int n = 0;
         int walls = 0;
         for (const auto &piece : pieces) {
@@ -288,8 +280,40 @@ void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
         if (n >= BoardSize) {
             return;
         }
-        const int group = GroupForPieces(pieces);
-        m_RowEntries[y].emplace_back(PositionEntry(group, pieces));
+        std::vector<Piece> ps = pieces;
+        // special constraints for the primary row
+        if (y == PrimaryRow) {
+            // can only have one non-wall (the primary piece itself)
+            const int nonWalls = ps.size() - walls;
+            if (nonWalls != 1) {
+                return;
+            }
+            // find the non-wall
+            int primaryIndex = -1;
+            for (int i = 0; i < ps.size(); i++) {
+                if (!ps[i].Fixed()) {
+                    primaryIndex = i;
+                    break;
+                }
+            }
+            if (primaryIndex < 0) {
+                return;
+            }
+            // swap it to position zero
+            std::swap(ps[0], ps[primaryIndex]);
+            // check its size
+            if (ps[0].Size() != PrimarySize) {
+                return;
+            }
+            // no walls can appear to the right of the primary piece
+            for (int i = 1; i < ps.size(); i++) {
+                if (ps[i].Position() > ps[0].Position()) {
+                    return;
+                }
+            }
+        }
+        const int group = GroupForPieces(ps);
+        m_RowEntries[y].emplace_back(PositionEntry(group, ps));
         return;
     }
     for (int s = MinPieceSize; s <= MaxPieceSize; s++) {
