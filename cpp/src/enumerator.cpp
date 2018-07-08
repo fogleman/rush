@@ -153,6 +153,15 @@ void Enumerator::PopulateGroupRow(
     EnumeratorFunc func, Board &board, uint64_t &id,
     int y, bb mask, bb require) const
 {
+    int walls = 0;
+    for (const auto &piece : board.Pieces()) {
+        if (piece.Fixed()) {
+            walls++;
+        }
+    }
+    if (walls > MaxWalls) {
+        return;
+    }
     if (y >= BoardSize) {
         PopulateGroupCol(group, digit, func, board, id, 0, mask, require);
         return;
@@ -216,6 +225,15 @@ void Enumerator::PopulateGroupCol(
 
 void Enumerator::ComputeGroups(std::vector<int> &sizes, int sum) {
     if (sum >= BoardSize) {
+        return;
+    }
+    int walls = 0;
+    for (const int size : sizes) {
+        if (size == 1) {
+            walls++;
+        }
+    }
+    if (walls > MaxWalls) {
         return;
     }
     m_Groups.push_back(sizes);
