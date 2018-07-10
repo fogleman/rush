@@ -108,9 +108,9 @@ int main2() {
     // // 51 83 13 BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM. 4780
     Board board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
 
+    Solver solver;
     for (int i = 0; i < 100; i++) {
-        Solver solver(board);
-        solver.Solve();
+        solver.Solve(board);
     }
     // Solver solver(board);
     // const int numMoves = solver.Solve();

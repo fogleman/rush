@@ -102,11 +102,19 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     }
 
     // determine if unsolved board is minimal
-    for (int i = 1; i < m_Unsolved.Pieces().size(); i++) {
+    Solver solver;
+    const auto solution = solver.Solve(m_Unsolved);
+    std::vector<bool> pieceMoved(m_Unsolved.Pieces().size(), false);
+    for (const auto &move : solution.Moves()) {
+        pieceMoved[move.Piece()] = true;
+    }
+    for (int i = 1; i < pieceMoved.size(); i++) {
+        if (pieceMoved[i]) {
+            continue;
+        }
         Board board(m_Unsolved);
         board.RemovePiece(i);
-        const int numMoves = Solver(board).Solve();
-        if (numMoves == maxDistance) {
+        if (solver.CountMoves(board) == maxDistance) {
             return;
         }
     }

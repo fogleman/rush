@@ -2,6 +2,7 @@
 
 class Move {
 public:
+    Move() = default;
     explicit Move(int piece, int steps);
 
     int Piece() const {

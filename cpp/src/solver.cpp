@@ -1,42 +1,59 @@
 #include "solver.h"
 
-Solver::Solver(const Board &board) :
-    m_Board(board)
+Solution::Solution(const std::vector<Move> &moves) :
+    m_Moves(moves)
 {
 }
 
-int Solver::Solve() {
-    if (m_Board.Solved()) {
+Solution Solver::Solve(Board &board) {
+    m_Moves.resize(0);
+    if (board.Solved()) {
+        return Solution(m_Moves);
+    }
+    m_Memo.clear();
+    for (int i = 1; ; i++) {
+        m_Moves.resize(i);
+        m_MoveBuffers.resize(i);
+        if (Search(board, 0, i, -1)) {
+            return Solution(m_Moves);
+        }
+    }
+}
+
+int Solver::CountMoves(Board &board) {
+    if (board.Solved()) {
         return 0;
     }
+    m_Memo.clear();
     for (int i = 1; ; i++) {
+        m_Moves.resize(i);
         m_MoveBuffers.resize(i);
-        if (Search(0, i, -1)) {
+        if (Search(board, 0, i, -1)) {
             return i;
         }
     }
 }
 
-bool Solver::Search(int depth, int maxDepth, int previousPiece) {
+bool Solver::Search(Board &board, int depth, int maxDepth, int previousPiece) {
     int height = maxDepth - depth;
     if (height == 0) {
-        return m_Board.Solved();
+        return board.Solved();
     }
 
-    const auto item = m_Memo.find(m_Board.Key());
+    const auto item = m_Memo.find(board.Key());
     if (item != m_Memo.end() && item->second >= height) {
         return false;
     }
-    m_Memo[m_Board.Key()] = height;
+    m_Memo[board.Key()] = height;
 
     // count occupied squares between primary piece and target
-    const auto &primary = m_Board.Pieces()[0];
+    const auto &primary = board.Pieces()[0];
     const int i0 = primary.Position() + primary.Size();
     const int i1 = Target + primary.Size() - 1;
     int minMoves = 0;
     for (int i = i0; i <= i1; i++) {
         const bb mask = (bb)1 << i;
-        if ((mask & m_Board.Mask()) != 0) {
+        if ((mask & board.Mask()) != 0) {
             minMoves++;
         }
     }
@@ -45,16 +62,17 @@ bool Solver::Search(int depth, int maxDepth, int previousPiece) {
     }
 
     auto &moves = m_MoveBuffers[depth];
-    m_Board.Moves(moves);
+    board.Moves(moves);
     for (const auto &move : moves) {
         if (move.Piece() == previousPiece) {
             continue;
         }
-        m_Board.DoMove(move);
-        bool solved = Search(depth + 1, maxDepth, move.Piece());
-        m_Board.UndoMove(move);
+        board.DoMove(move);
+        bool solved = Search(board, depth + 1, maxDepth, move.Piece());
+        board.UndoMove(move);
         if (solved) {
-            m_Memo[m_Board.Key()] = height - 1;
+            m_Memo[board.Key()] = height - 1;
+            m_Moves[depth] = move;
             return true;
         }
     }
