@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/container/small_vector.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -30,7 +31,7 @@ public:
         return m_Key;
     }
 
-    const std::vector<Piece> &Pieces() const {
+    const boost::container::small_vector<Piece, BoardSize2> &Pieces() const {
         return m_Pieces;
     }
 
@@ -56,7 +57,7 @@ private:
     bb m_HorzMask;
     bb m_VertMask;
     bb m_Key;
-    std::vector<Piece> m_Pieces;
+    boost::container::small_vector<Piece, BoardSize2> m_Pieces;
 };
 
 std::ostream& operator<<(std::ostream &stream, const Board &board);

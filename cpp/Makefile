@@ -8,7 +8,7 @@ SRC_EXT = cpp
 # Path to the source directory, relative to the makefile
 SRC_PATH = src
 # General compiler flags
-COMPILE_FLAGS = -std=c++14 -O3 -Wall -Wextra -Wno-sign-compare
+COMPILE_FLAGS = -std=c++14 -flto -O3 -Wall -Wextra -Wno-sign-compare
 # Additional release-specific flags
 RCOMPILE_FLAGS = -D NDEBUG
 # Additional debug-specific flags
@@ -16,7 +16,7 @@ DCOMPILE_FLAGS = -D DEBUG
 # Add additional include paths
 INCLUDES = -I $(SRC_PATH)
 # General linker settings
-LINK_FLAGS = 
+LINK_FLAGS = -flto -O3
 # Additional release-specific linker settings
 RLINK_FLAGS = 
 # Additional debug-specific linker settings

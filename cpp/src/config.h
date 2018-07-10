@@ -2,10 +2,10 @@
 
 #include "bb.h"
 
-const int BoardSize = 6;
+const int BoardSize = 5;
 const int PrimaryRow = 2;
 const int PrimarySize = 2;
-const int MinPieceSize = 1;
+const int MinPieceSize = 2;
 const int MaxPieceSize = 3;
 const int MaxWalls = 1;
 const int NumWorkers = 4;

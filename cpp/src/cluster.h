@@ -36,18 +36,6 @@ public:
         return m_Distances.size() - 1;
     }
 
-    int NumSolvedStates() const {
-        return m_Distances.front();
-    }
-
-    int NumUnsolvedStates() const {
-        return m_Distances.back();
-    }
-
-    const Board &Solved() const {
-        return m_Solved;
-    }
-
     const Board &Unsolved() const {
         return m_Unsolved;
     }
@@ -63,7 +51,6 @@ private:
     bool m_Solvable;
     bool m_Minimal;
     int m_NumStates;
-    Board m_Solved;
     Board m_Unsolved;
     std::vector<int> m_Distances;
 };

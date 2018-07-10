@@ -1,9 +1,8 @@
 #include "cluster.h"
 
+#include <deque>
 #include <limits>
-#include <list>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "solver.h"
 
@@ -19,11 +18,11 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     std::vector<Move> moves;
 
     // exploration queue
-    std::list<Board> queue;
+    std::deque<Board> queue;
     queue.push_back(input);
 
     // unsolve queue
-    std::list<Board> unsolveQueue;
+    std::deque<Board> unsolveQueue;
 
     // large sentinel distance when distance is not yet known
     const int sentinel = std::numeric_limits<int>::max();
@@ -35,16 +34,7 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
     // explore reachable nodes
     while (!queue.empty()) {
         Board &board = queue.front();
-        if (board < input) {
-            // not canonical, exit early
-            // and don't count non-canonical solvable boards
-            m_Solvable = false;
-            return;
-        }
         if (board.Solved()) {
-            if (!m_Solvable || board < m_Solved) {
-                m_Solved = board;
-            }
             m_Solvable = true;
             distance[board.Key()] = 0;
             unsolveQueue.push_back(board);
@@ -52,6 +42,12 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
         board.Moves(moves);
         for (const auto &move : moves) {
             board.DoMove(move);
+            if (board < input) {
+                // not canonical, exit early
+                // and don't count non-canonical solvable boards
+                m_Solvable = false;
+                return;
+            }
             if (distance.emplace(std::make_pair(board.Key(), sentinel)).second) {
                 queue.push_back(board);
             }
