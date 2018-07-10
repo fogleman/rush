@@ -28,3 +28,16 @@ const bb RightColumn = []() {
     }
     return result;
 }();
+
+const std::vector<std::vector<bb>> ZobristKeys = []() {
+    const int n = BoardSize2;
+    std::vector<std::vector<bb>> keys(n, std::vector<bb>(n, 0));
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            keys[i][j] = RandomBitboard(gen);
+        }
+    }
+    return keys;
+}();

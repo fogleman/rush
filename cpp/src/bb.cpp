@@ -12,3 +12,12 @@ std::string BitboardString(const bb b) {
     }
     return s;
 }
+
+bb RandomBitboard(std::mt19937 &gen) {
+    std::uniform_int_distribution<int> dis(0, 0xffff);
+    const bb a = dis(gen);
+    const bb b = dis(gen);
+    const bb c = dis(gen);
+    const bb d = dis(gen);
+    return a << 48 | b << 32 | c << 16 | d;
+}

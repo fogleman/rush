@@ -13,5 +13,5 @@ private:
     bool Search(int depth, int maxDepth, int previousPiece);
     Board m_Board;
     std::vector<std::vector<Move>> m_MoveBuffers;
-    std::unordered_map<BoardKey, int> m_Memo;
+    std::unordered_map<bb, int> m_Memo;
 };

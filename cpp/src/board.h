@@ -9,40 +9,6 @@
 #include "move.h"
 #include "piece.h"
 
-class BoardKey {
-public:
-    explicit BoardKey(bb horz, bb vert) :
-        m_HorzMask(horz),
-        m_VertMask(vert)
-    {}
-
-    bb HorzMask() const {
-        return m_HorzMask;
-    }
-
-    bb VertMask() const {
-        return m_VertMask;
-    }
-
-    bool operator==(const BoardKey &other) const {
-        return HorzMask() == other.HorzMask() && VertMask() == other.VertMask();
-    }
-
-private:
-    bb m_HorzMask;
-    bb m_VertMask;
-};
-
-bool operator<(const BoardKey &k1, const BoardKey &k2);
-
-namespace std {
-    template<> struct hash<BoardKey> {
-        size_t operator()(const BoardKey &b) const {
-            return std::hash<bb>()(b.HorzMask()) ^ std::hash<bb>()(b.VertMask());
-        }
-    };
-}
-
 class Board {
 public:
     Board();
@@ -60,8 +26,8 @@ public:
         return m_VertMask;
     }
 
-    BoardKey Key() const {
-        return BoardKey(m_HorzMask, m_VertMask);
+    bb Key() const {
+        return m_Key;
     }
 
     const std::vector<Piece> &Pieces() const {
@@ -89,6 +55,7 @@ private:
     bb m_Mask;
     bb m_HorzMask;
     bb m_VertMask;
+    bb m_Key;
     std::vector<Piece> m_Pieces;
 };
 
