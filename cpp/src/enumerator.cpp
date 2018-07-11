@@ -69,14 +69,19 @@ void Enumerator::PopulateRow(
     EnumeratorFunc func, Board &board, uint64_t &id, int y,
     bb mask, bb require, uint64_t group) const
 {
-    int walls = 0;
-    for (const auto &piece : board.Pieces()) {
-        if (piece.Fixed()) {
-            walls++;
+    if (DoWalls) {
+        int walls = 0;
+        for (const auto &piece : board.Pieces()) {
+            if (piece.Fixed()) {
+                walls++;
+            }
         }
-    }
-    if (walls > MaxWalls) {
-        return;
+        if (walls > MaxWalls) {
+            return;
+        }
+        if (y >= BoardSize && walls < MinWalls) {
+            return;
+        }
     }
     if (y >= BoardSize) {
         PopulateCol(func, board, id, 0, mask, require, group);
@@ -153,14 +158,19 @@ void Enumerator::PopulateGroupRow(
     EnumeratorFunc func, Board &board, uint64_t &id,
     int y, bb mask, bb require) const
 {
-    int walls = 0;
-    for (const auto &piece : board.Pieces()) {
-        if (piece.Fixed()) {
-            walls++;
+    if (DoWalls) {
+        int walls = 0;
+        for (const auto &piece : board.Pieces()) {
+            if (piece.Fixed()) {
+                walls++;
+            }
         }
-    }
-    if (walls > MaxWalls) {
-        return;
+        if (walls > MaxWalls) {
+            return;
+        }
+        if (y >= BoardSize && walls < MinWalls) {
+            return;
+        }
     }
     if (y >= BoardSize) {
         PopulateGroupCol(group, digit, func, board, id, 0, mask, require);

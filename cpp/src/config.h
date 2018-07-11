@@ -7,8 +7,18 @@ const int PrimaryRow = 2;
 const int PrimarySize = 2;
 const int MinPieceSize = 2;
 const int MaxPieceSize = 3;
+const int MinWalls = 0;
 const int MaxWalls = 1;
 const int NumWorkers = 4;
+
+// 5x5
+// 0 walls = 268108
+// 1 walls = 2988669
+// 2 walls = 13341759
+// 3 walls = 41965437
+// 4 walls = 95002637
+// 0-3 wls = 58295867
+// 0-4 wls = 153298505
 
 // const uint64_t MaxID = 1149; // 4x4
 // const uint64_t MaxID = 268108; // 5x5
@@ -20,6 +30,7 @@ const int BoardSize2 = BoardSize * BoardSize;
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
 const int H = 1; // horizontal stride
 const int V = BoardSize; // vertical stride
+const bool DoWalls = MinPieceSize == 1;
 
 const std::vector<std::vector<bb>> ZobristKeys = []() {
     const int n = BoardSize2;
