@@ -101,9 +101,6 @@ void Enumerator::PopulateColumn(
     bb mask, bb require) const
 {
     if (x >= BoardSize) {
-        if ((mask & require) != require) {
-            return;
-        }
         func(id, board);
         id++;
         return;
