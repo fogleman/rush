@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
 #include <vector>
 
 #include "board.h"
@@ -29,5 +29,5 @@ private:
     bool Search(Board &board, int depth, int maxDepth, int previousPiece);
     std::vector<Move> m_Moves;
     std::vector<std::vector<Move>> m_MoveBuffers;
-    std::unordered_map<bb, int> m_Memo;
+    boost::unordered_map<BoardKey, int> m_Memo;
 };

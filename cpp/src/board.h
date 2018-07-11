@@ -3,12 +3,15 @@
 #include <boost/container/small_vector.hpp>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "bb.h"
 #include "config.h"
 #include "move.h"
 #include "piece.h"
+
+typedef std::tuple<bb, bb> BoardKey;
 
 class Board {
 public:
@@ -27,8 +30,8 @@ public:
         return m_VertMask;
     }
 
-    bb Key() const {
-        return m_Key;
+    BoardKey Key() const {
+        return std::make_tuple(m_HorzMask, m_VertMask);
     }
 
     const boost::container::small_vector<Piece, BoardSize2> &Pieces() const {
@@ -56,7 +59,6 @@ private:
     bb m_Mask;
     bb m_HorzMask;
     bb m_VertMask;
-    bb m_Key;
     boost::container::small_vector<Piece, BoardSize2> m_Pieces;
 };
 

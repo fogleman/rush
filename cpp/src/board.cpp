@@ -6,16 +6,14 @@
 Board::Board() :
     m_Mask(0),
     m_HorzMask(0),
-    m_VertMask(0),
-    m_Key(0)
+    m_VertMask(0)
 {
 }
 
 Board::Board(std::string desc) :
     m_Mask(0),
     m_HorzMask(0),
-    m_VertMask(0),
-    m_Key(0)
+    m_VertMask(0)
 {
     if (desc.length() != BoardSize2) {
         throw "board string is wrong length";
@@ -60,7 +58,6 @@ Board::Board(std::string desc) :
 }
 
 void Board::AddPiece(const Piece &piece) {
-    const int i = m_Pieces.size();
     m_Pieces.push_back(piece);
     m_Mask |= piece.Mask();
     if (piece.Stride() == H) {
@@ -68,7 +65,6 @@ void Board::AddPiece(const Piece &piece) {
     } else {
         m_VertMask |= piece.Mask();
     }
-    m_Key ^= ZobristKeys[i][piece.Position()];
 }
 
 void Board::PopPiece() {
@@ -80,8 +76,6 @@ void Board::PopPiece() {
         m_VertMask &= ~piece.Mask();
     }
     m_Pieces.pop_back();
-    const int i = m_Pieces.size();
-    m_Key ^= ZobristKeys[i][piece.Position()];
 }
 
 void Board::RemovePiece(const int i) {
@@ -93,13 +87,11 @@ void Board::RemovePiece(const int i) {
         m_VertMask &= ~piece.Mask();
     }
     m_Pieces.erase(m_Pieces.begin() + i);
-    m_Key ^= ZobristKeys[i][piece.Position()];
 }
 
 void Board::DoMove(const int i, const int steps) {
     auto &piece = m_Pieces[i];
     m_Mask &= ~piece.Mask();
-    m_Key ^= ZobristKeys[i][piece.Position()];
     if (piece.Stride() == H) {
         m_HorzMask &= ~piece.Mask();
         piece.Move(steps);
@@ -110,7 +102,6 @@ void Board::DoMove(const int i, const int steps) {
         m_VertMask |= piece.Mask();
     }
     m_Mask |= piece.Mask();
-    m_Key ^= ZobristKeys[i][piece.Position()];
 }
 
 void Board::DoMove(const Move &move) {

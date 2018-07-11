@@ -2,7 +2,7 @@
 
 #include <deque>
 #include <limits>
-#include <unordered_map>
+#include <boost/unordered_map.hpp>
 
 #include "solver.h"
 
@@ -27,7 +27,7 @@ Cluster::Cluster(const uint64_t id, const Board &input) :
     const int sentinel = std::numeric_limits<int>::max();
 
     // maps keys to distance from nearest goal state
-    std::unordered_map<bb, int> distance;
+    boost::unordered_map<BoardKey, int> distance;
     distance[input.Key()] = sentinel;
 
     // explore reachable nodes
