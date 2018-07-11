@@ -18,11 +18,11 @@ typedef std::function<void(const Cluster &)> CallbackFunc;
 
 void worker(const int wi, const int wn, CallbackFunc func) {
     Enumerator enumerator;
-    enumerator.Enumerate([&](uint64_t id, uint64_t group, const Board &board) {
+    enumerator.Enumerate([&](uint64_t id, const Board &board) {
         if (id % wn != wi) {
             return;
         }
-        Cluster cluster(id, group, board);
+        Cluster cluster(id, board);
         func(cluster);
     });
 }
@@ -30,7 +30,7 @@ void worker(const int wi, const int wn, CallbackFunc func) {
 int main() {
     // uint64_t lastID = 0;
     // Enumerator enumerator;
-    // enumerator.Enumerate([&](uint64_t id, uint64_t group, const Board &board) {
+    // enumerator.Enumerate([&](uint64_t id, const Board &board) {
     //     lastID = std::max(lastID, id);
     // });
     // cout << lastID << endl;

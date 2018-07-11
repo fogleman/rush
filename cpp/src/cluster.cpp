@@ -6,9 +6,8 @@
 
 #include "solver.h"
 
-Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
+Cluster::Cluster(const uint64_t id, const Board &input) :
     m_ID(id),
-    m_Group(group),
     m_Canonical(false),
     m_Solvable(false),
     m_Minimal(false),

@@ -6,14 +6,10 @@
 
 class Cluster {
 public:
-    Cluster(const uint64_t id, const uint64_t group, const Board &input);
+    Cluster(const uint64_t id, const Board &input);
 
     uint64_t ID() const {
         return m_ID;
-    }
-
-    uint64_t Group() const {
-        return m_Group;
     }
 
     bool Canonical() const {
@@ -46,7 +42,6 @@ public:
 
 private:
     uint64_t m_ID;
-    uint64_t m_Group;
     bool m_Canonical;
     bool m_Solvable;
     bool m_Minimal;
