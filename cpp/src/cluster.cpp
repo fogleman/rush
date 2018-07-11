@@ -90,16 +90,11 @@ Cluster::Cluster(const uint64_t id, const Board &input) :
         unsolveQueue.pop_front();
     }
 
-    // record number of states by distance to goal
-    m_Distances.resize(maxDistance + 1);
-    for (const auto &item : distance) {
-        m_Distances[item.second]++;
-    }
-
     // determine if unsolved board is minimal
     Solver solver;
     const auto solution = solver.Solve(m_Unsolved);
-    std::vector<bool> pieceMoved(m_Unsolved.Pieces().size(), false);
+    const int numPieces = input.Pieces().size();
+    std::vector<bool> pieceMoved(numPieces, false);
     for (const auto &move : solution.Moves()) {
         pieceMoved[move.Piece()] = true;
     }
@@ -114,4 +109,10 @@ Cluster::Cluster(const uint64_t id, const Board &input) :
         }
     }
     m_Minimal = true;
+
+    // record number of states by distance to goal
+    m_Distances.resize(maxDistance + 1);
+    for (const auto &item : distance) {
+        m_Distances[item.second]++;
+    }
 }
