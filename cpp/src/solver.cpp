@@ -47,13 +47,14 @@ bool Solver::Search(Board &board, int depth, int maxDepth, int previousPiece) {
     m_Memo[board.Key()] = height;
 
     // count occupied squares between primary piece and target
+    const bb boardMask = board.Mask();
     const auto &primary = board.Pieces()[0];
     const int i0 = primary.Position() + primary.Size();
     const int i1 = Target + primary.Size() - 1;
     int minMoves = 0;
     for (int i = i0; i <= i1; i++) {
         const bb mask = (bb)1 << i;
-        if ((mask & board.Mask()) != 0) {
+        if ((mask & boardMask) != 0) {
             minMoves++;
         }
     }

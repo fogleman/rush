@@ -4,14 +4,12 @@
 #include <map>
 
 Board::Board() :
-    m_Mask(0),
     m_HorzMask(0),
     m_VertMask(0)
 {
 }
 
 Board::Board(std::string desc) :
-    m_Mask(0),
     m_HorzMask(0),
     m_VertMask(0)
 {
@@ -59,7 +57,6 @@ Board::Board(std::string desc) :
 
 void Board::AddPiece(const Piece &piece) {
     m_Pieces.push_back(piece);
-    m_Mask |= piece.Mask();
     if (piece.Stride() == H) {
         m_HorzMask |= piece.Mask();
     } else {
@@ -69,7 +66,6 @@ void Board::AddPiece(const Piece &piece) {
 
 void Board::PopPiece() {
     const auto &piece = m_Pieces.back();
-    m_Mask &= ~piece.Mask();
     if (piece.Stride() == H) {
         m_HorzMask &= ~piece.Mask();
     } else {
@@ -80,7 +76,6 @@ void Board::PopPiece() {
 
 void Board::RemovePiece(const int i) {
     const auto &piece = m_Pieces[i];
-    m_Mask &= ~piece.Mask();
     if (piece.Stride() == H) {
         m_HorzMask &= ~piece.Mask();
     } else {
@@ -91,7 +86,6 @@ void Board::RemovePiece(const int i) {
 
 void Board::DoMove(const int i, const int steps) {
     auto &piece = m_Pieces[i];
-    m_Mask &= ~piece.Mask();
     if (piece.Stride() == H) {
         m_HorzMask &= ~piece.Mask();
         piece.Move(steps);
@@ -101,7 +95,6 @@ void Board::DoMove(const int i, const int steps) {
         piece.Move(steps);
         m_VertMask |= piece.Mask();
     }
-    m_Mask |= piece.Mask();
 }
 
 void Board::DoMove(const Move &move) {
@@ -114,6 +107,7 @@ void Board::UndoMove(const Move &move) {
 
 void Board::Moves(std::vector<Move> &moves) const {
     moves.clear();
+    const bb boardMask = Mask();
     for (int i = 0; i < m_Pieces.size(); i++) {
         const auto &piece = m_Pieces[i];
         if (piece.Fixed()) {
@@ -124,7 +118,7 @@ void Board::Moves(std::vector<Move> &moves) const {
             if ((piece.Mask() & LeftColumn) == 0) {
                 bb mask = (piece.Mask() >> H) & ~piece.Mask();
                 int steps = -1;
-                while ((m_Mask & mask) == 0) {
+                while ((boardMask & mask) == 0) {
                     moves.emplace_back(Move(i, steps));
                     if ((mask & LeftColumn) != 0) {
                         break;
@@ -137,7 +131,7 @@ void Board::Moves(std::vector<Move> &moves) const {
             if ((piece.Mask() & RightColumn) == 0) {
                 bb mask = (piece.Mask() << H) & ~piece.Mask();
                 int steps = 1;
-                while ((m_Mask & mask) == 0) {
+                while ((boardMask & mask) == 0) {
                     moves.emplace_back(Move(i, steps));
                     if ((mask & RightColumn) != 0) {
                         break;
@@ -151,7 +145,7 @@ void Board::Moves(std::vector<Move> &moves) const {
             if ((piece.Mask() & TopRow) == 0) {
                 bb mask = (piece.Mask() >> V) & ~piece.Mask();
                 int steps = -1;
-                while ((m_Mask & mask) == 0) {
+                while ((boardMask & mask) == 0) {
                     moves.emplace_back(Move(i, steps));
                     if ((mask & TopRow) != 0) {
                         break;
@@ -164,7 +158,7 @@ void Board::Moves(std::vector<Move> &moves) const {
             if ((piece.Mask() & BottomRow) == 0) {
                 bb mask = (piece.Mask() << V) & ~piece.Mask();
                 int steps = 1;
-                while ((m_Mask & mask) == 0) {
+                while ((boardMask & mask) == 0) {
                     moves.emplace_back(Move(i, steps));
                     if ((mask & BottomRow) != 0) {
                         break;

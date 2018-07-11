@@ -19,7 +19,7 @@ public:
     explicit Board(std::string desc);
 
     bb Mask() const {
-        return m_Mask;
+        return m_HorzMask | m_VertMask;
     }
 
     bb HorzMask() const {
@@ -56,7 +56,6 @@ public:
     std::string String2D() const;
 
 private:
-    bb m_Mask;
     bb m_HorzMask;
     bb m_VertMask;
     boost::container::small_vector<Piece, BoardSize2> m_Pieces;
