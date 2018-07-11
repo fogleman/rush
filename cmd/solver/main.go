@@ -3,23 +3,15 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/fogleman/gg"
 	"github.com/fogleman/rush"
 )
 
-var Board = []string{
-	"..CBBB",
-	"..CF..",
-	"AAEF..",
-	"IIEKKH",
-	"JG.LLH",
-	"JGDD.H",
-}
-
 func main() {
-	board, err := rush.NewBoard(Board)
+	board, err := rush.NewBoardFromString(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
