@@ -105,7 +105,7 @@ int main() {
     const double est = pct > 0 ? hrs / pct : 0;
     cerr
         << fixed
-        << pct << " pct "
+        << 1.0 << " pct "
         << hrs << " hrs "
         << est << " est - "
         << numIn << " inp "

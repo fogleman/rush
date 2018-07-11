@@ -13,20 +13,18 @@ const int MinWalls = 0;
 const int MaxWalls = 0;
 const int NumWorkers = 4;
 
-// 5x5
-// 0 walls = 268108
-// 1 walls = 2988669
-// 2 walls = 13341759
-// 3 walls = 41965437
-// 4 walls = 95002637
-// 0-3 wls = 58295867
-// 0-4 wls = 153298505
+// const uint64_t MaxID = 1348; // 4x4
+// const uint64_t MaxID = 9803; // 4x4, 0-1 walls
+// const uint64_t MaxID = 33952; // 4x4, 0-2 walls
+// const uint64_t MaxID = 76837; // 4x4, 0-3 walls
 
-// const uint64_t MaxID = 1149; // 4x4
 const uint64_t MaxID = 268108; // 5x5
+// const uint64_t MaxID = 2988669; // 5x5, 0-1 walls
+// const uint64_t MaxID = 16330429; // 5x5, 0-2 walls
+
 // const uint64_t MaxID = 243502785; // 6x6
-// const uint64_t MaxID = 2689860; // 5x5, 1 wall
-// const uint64_t MaxID = 3331773541; // 6x6, 1 wall
+// const uint64_t MaxID = 3670622351; // 6x6, 0-1 walls
+// const uint64_t MaxID = 27403231254; // 6x6, 0-2 walls
 
 const int BoardSize2 = BoardSize * BoardSize;
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
