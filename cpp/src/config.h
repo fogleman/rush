@@ -2,13 +2,13 @@
 
 #include "bb.h"
 
-const int BoardSize = 5;
+const int BoardSize = 6;
 const int PrimaryRow = 2;
 const int PrimarySize = 2;
 const int MinPieceSize = 2;
 const int MaxPieceSize = 3;
 const int MinWalls = 0;
-const int MaxWalls = 1;
+const int MaxWalls = 0;
 const int NumWorkers = 4;
 
 // 5x5
@@ -22,9 +22,9 @@ const int NumWorkers = 4;
 
 // const uint64_t MaxID = 1149; // 4x4
 // const uint64_t MaxID = 268108; // 5x5
-// const uint64_t MaxID = 243502785; // 6x6
+const uint64_t MaxID = 243502785; // 6x6
 // const uint64_t MaxID = 2689860; // 5x5, 1 wall
-const uint64_t MaxID = 3331773541; // 6x6, 1 wall
+// const uint64_t MaxID = 3331773541; // 6x6, 1 wall
 
 const int BoardSize2 = BoardSize * BoardSize;
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
