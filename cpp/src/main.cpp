@@ -36,16 +36,15 @@ int main() {
     // cout << lastID << endl;
     // return 0;
 
-    uint64_t maxSeenID = 0;
-
     mutex m;
 
-    auto start = steady_clock::now();
-
+    uint64_t maxSeenID = 0;
     uint64_t numIn = 0;
     uint64_t numCanonical = 0;
     uint64_t numSolvable = 0;
     uint64_t numMinimal = 0;
+
+    auto start = steady_clock::now();
 
     auto callback = [&](const Cluster &c) {
         lock_guard<mutex> lock(m);
@@ -69,9 +68,7 @@ int main() {
             << setfill('0')
             << setw(2) << c.NumMoves() << " "
             << unsolved << " "
-            << setw(10) << c.ID() << " "
-            << setfill(' ')
-            << setw(7) << c.NumStates() << " ";
+            << c.NumStates() << " ";
         for (int i = 0; i < c.DistanceCounts().size(); i++) {
             if (i != 0) {
                 cout << ",";
@@ -101,6 +98,21 @@ int main() {
     for (int wi = 0; wi < wn; wi++) {
         threads[wi].join();
     }
+
+    // print final stats to stderr
+    const double pct = (double)maxSeenID / (double)MaxID;
+    const double hrs = duration<double>(steady_clock::now() - start).count() / 3600;
+    const double est = pct > 0 ? hrs / pct : 0;
+    cerr
+        << fixed
+        << pct << " pct "
+        << hrs << " hrs "
+        << est << " est - "
+        << numIn << " inp "
+        << numCanonical << " can "
+        << numSolvable << " slv "
+        << numMinimal << " min"
+        << endl;
     return 0;
 }
 

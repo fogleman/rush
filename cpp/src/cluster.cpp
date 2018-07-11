@@ -48,7 +48,7 @@ Cluster::Cluster(const uint64_t id, const uint64_t group, const Board &input) :
                 m_Solvable = false;
                 return;
             }
-            if (distance.emplace(std::make_pair(board.Key(), sentinel)).second) {
+            if (distance.emplace(board.Key(), sentinel).second) {
                 queue.push_back(board);
             }
             board.UndoMove(move);
