@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "bb.h"
 
 const int BoardSize = 5;
@@ -32,34 +34,33 @@ const int H = 1; // horizontal stride
 const int V = BoardSize; // vertical stride
 const bool DoWalls = MinPieceSize == 1;
 
-const bb TopRow = []() {
-    bb result = 0;
-    for (int x = 0; x < BoardSize; x++) {
-        result |= (bb)1 << x;
-    }
-    return result;
-}();
-
-const bb BottomRow = []() {
-    bb result = 0;
-    for (int x = 0; x < BoardSize; x++) {
-        result |= (bb)1 << (BoardSize2 - x - 1);
-    }
-    return result;
-}();
-
-const bb LeftColumn = []() {
-    bb result = 0;
+const std::array<bb, BoardSize> RowMasks = []() {
+    std::array<bb, BoardSize> rowMasks;
     for (int y = 0; y < BoardSize; y++) {
-        result |= (bb)1 << (y * BoardSize);
+        bb mask = 0;
+        for (int x = 0; x < BoardSize; x++) {
+            const int i = y * BoardSize + x;
+            mask |= (bb)1 << i;
+        }
+        rowMasks[y] = mask;
     }
-    return result;
+    return rowMasks;
 }();
 
-const bb RightColumn = []() {
-    bb result = 0;
-    for (int y = 0; y < BoardSize; y++) {
-        result |= (bb)1 << (y * BoardSize + BoardSize - 1);
+const std::array<bb, BoardSize> ColumnMasks = []() {
+    std::array<bb, BoardSize> columnMasks;
+    for (int x = 0; x < BoardSize; x++) {
+        bb mask = 0;
+        for (int y = 0; y < BoardSize; y++) {
+            const int i = y * BoardSize + x;
+            mask |= (bb)1 << i;
+        }
+        columnMasks[x] = mask;
     }
-    return result;
+    return columnMasks;
 }();
+
+const bb TopRow = RowMasks.front();
+const bb BottomRow = RowMasks.back();
+const bb LeftColumn = ColumnMasks.front();
+const bb RightColumn = ColumnMasks.back();

@@ -73,7 +73,7 @@ void Enumerator::PopulateRow(
         }
     }
     if (y >= BoardSize) {
-        PopulateCol(func, board, id, 0, mask, require);
+        PopulateColumn(func, board, id, 0, mask, require);
         return;
     }
     if (y == PrimaryRow) {
@@ -96,7 +96,7 @@ void Enumerator::PopulateRow(
     }
 }
 
-void Enumerator::PopulateCol(
+void Enumerator::PopulateColumn(
     EnumeratorFunc func, Board &board, uint64_t &id, int x,
     bb mask, bb require) const
 {
@@ -108,14 +108,21 @@ void Enumerator::PopulateCol(
         id++;
         return;
     }
-    for (const auto &pe : m_ColEntries[x]) {
+    for (const auto &pe : m_ColumnEntries[x]) {
         if ((mask & pe.Mask()) != 0) {
+            continue;
+        }
+        if ((mask & pe.Require()) != pe.Require()) {
+            continue;
+        }
+        const bb columnRequire = require & ColumnMasks[x];
+        if ((pe.Mask() & columnRequire) != columnRequire) {
             continue;
         }
         for (const auto &piece : pe.Pieces()) {
             board.AddPiece(piece);
         }
-        PopulateCol(
+        PopulateColumn(
             func, board, id, x + 1,
             mask | pe.Mask(), require | pe.Require());
         for (int i = 0; i < pe.Pieces().size(); i++) {
@@ -229,7 +236,7 @@ void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
     ComputeRow(y, x + 1, pieces);
 }
 
-void Enumerator::ComputeCol(int x, int y, std::vector<Piece> &pieces) {
+void Enumerator::ComputeColumn(int x, int y, std::vector<Piece> &pieces) {
     if (y >= BoardSize) {
         int n = 0;
         for (const auto &piece : pieces) {
@@ -239,7 +246,7 @@ void Enumerator::ComputeCol(int x, int y, std::vector<Piece> &pieces) {
             return;
         }
         const int group = GroupForPieces(pieces);
-        m_ColEntries[x].emplace_back(PositionEntry(group, pieces));
+        m_ColumnEntries[x].emplace_back(PositionEntry(group, pieces));
         return;
     }
     for (int s = MinPieceSize; s <= MaxPieceSize; s++) {
@@ -252,19 +259,19 @@ void Enumerator::ComputeCol(int x, int y, std::vector<Piece> &pieces) {
         }
         const int p = y * BoardSize + x;
         pieces.emplace_back(Piece(p, s, V));
-        ComputeCol(x, y + s, pieces);
+        ComputeColumn(x, y + s, pieces);
         pieces.pop_back();
     }
-    ComputeCol(x, y + 1, pieces);
+    ComputeColumn(x, y + 1, pieces);
 }
 
 void Enumerator::ComputePositionEntries() {
     m_RowEntries.resize(BoardSize);
-    m_ColEntries.resize(BoardSize);
+    m_ColumnEntries.resize(BoardSize);
     std::vector<Piece> pieces;
     for (int i = 0; i < BoardSize; i++) {
         ComputeRow(i, 0, pieces);
-        ComputeCol(i, 0, pieces);
+        ComputeColumn(i, 0, pieces);
     }
     for (int i = 0; i < BoardSize; i++) {
         std::stable_sort(m_RowEntries[i].begin(), m_RowEntries[i].end(),
@@ -272,7 +279,7 @@ void Enumerator::ComputePositionEntries() {
         {
             return a.Group() < b.Group();
         });
-        std::stable_sort(m_ColEntries[i].begin(), m_ColEntries[i].end(),
+        std::stable_sort(m_ColumnEntries[i].begin(), m_ColumnEntries[i].end(),
             [](const PositionEntry &a, const PositionEntry &b)
         {
             return a.Group() < b.Group();

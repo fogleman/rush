@@ -47,7 +47,7 @@ private:
     void PopulateRow(
         EnumeratorFunc func, Board &board, uint64_t &id, int y,
         bb mask, bb require) const;
-    void PopulateCol(
+    void PopulateColumn(
         EnumeratorFunc func, Board &board, uint64_t &id, int x,
         bb mask, bb require) const;
 
@@ -55,10 +55,10 @@ private:
     int GroupForPieces(const std::vector<Piece> &pieces);
 
     void ComputeRow(int y, int x, std::vector<Piece> &pieces);
-    void ComputeCol(int x, int y, std::vector<Piece> &pieces);
+    void ComputeColumn(int x, int y, std::vector<Piece> &pieces);
     void ComputePositionEntries();
 
     std::vector<std::vector<int>> m_Groups;
     std::vector<std::vector<PositionEntry>> m_RowEntries;
-    std::vector<std::vector<PositionEntry>> m_ColEntries;
+    std::vector<std::vector<PositionEntry>> m_ColumnEntries;
 };
