@@ -128,36 +128,60 @@ void Board::Moves(std::vector<Move> &moves) const {
         if (piece.Fixed()) {
             continue;
         }
-        // compute range
-        int forwardSteps, reverseSteps;
         if (piece.Stride() == H) {
-            int x = piece.Position() % BoardSize;
-            reverseSteps = -x;
-            forwardSteps = BoardSize - piece.Size() - x;
+            // reverse / left (negative steps)
+            if ((piece.Mask() & LeftColumn) == 0) {
+                bb mask = (piece.Mask() >> H) & ~piece.Mask();
+                int steps = -1;
+                while ((m_Mask & mask) == 0) {
+                    moves.emplace_back(Move(i, steps));
+                    if ((mask & LeftColumn) != 0) {
+                        break;
+                    }
+                    mask >>= H;
+                    steps--;
+                }
+            }
+            // forward / right (positive steps)
+            if ((piece.Mask() & RightColumn) == 0) {
+                bb mask = (piece.Mask() << H) & ~piece.Mask();
+                int steps = 1;
+                while ((m_Mask & mask) == 0) {
+                    moves.emplace_back(Move(i, steps));
+                    if ((mask & RightColumn) != 0) {
+                        break;
+                    }
+                    mask <<= H;
+                    steps++;
+                }
+            }
         } else {
-            int y = piece.Position() / BoardSize;
-            reverseSteps = -y;
-            forwardSteps = BoardSize - piece.Size() - y;
-        }
-        // reverse (negative steps)
-        int p = piece.Position() - piece.Stride();
-        bb mask = (bb)1 << p;
-        for (int steps = -1; steps >= reverseSteps; steps--) {
-            if ((m_Mask & mask) != 0) {
-                break;
+            // reverse / up (negative steps)
+            if ((piece.Mask() & TopRow) == 0) {
+                bb mask = (piece.Mask() >> V) & ~piece.Mask();
+                int steps = -1;
+                while ((m_Mask & mask) == 0) {
+                    moves.emplace_back(Move(i, steps));
+                    if ((mask & TopRow) != 0) {
+                        break;
+                    }
+                    mask >>= V;
+                    steps--;
+                }
             }
-            moves.emplace_back(Move(i, steps));
-            mask >>= piece.Stride();
-        }
-        // forward (positive steps)
-        p = piece.Position() + piece.Size() * piece.Stride();
-        mask = (bb)1 << p;
-        for (int steps = 1; steps <= forwardSteps; steps++) {
-            if ((m_Mask & mask) != 0) {
-                break;
+            // forward / down (positive steps)
+            if ((piece.Mask() & BottomRow) == 0) {
+                bb mask = (piece.Mask() << V) & ~piece.Mask();
+                int steps = 1;
+                while ((m_Mask & mask) == 0) {
+                    moves.emplace_back(Move(i, steps));
+                    if ((mask & BottomRow) != 0) {
+                        break;
+                    }
+                    mask <<= V;
+                    steps++;
+                }
             }
-            moves.emplace_back(Move(i, steps));
-            mask <<= piece.Stride();
         }
     }
 }
