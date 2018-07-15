@@ -1,4 +1,6 @@
-new p5();
+// new p5();
+
+// Constants
 
 var MinPieceSize = 2;
 var MaxPieceSize = 3;
@@ -12,6 +14,17 @@ var PieceOutlineColor = "#222222";
 var LabelColor        = "#222222";
 var WallColor         = "#222222";
 var WallBoltColor     = "#AAAAAA";
+
+// Globals
+var board;
+
+var dragPiece = -1;
+var dragAnchor;
+var dragDelta;
+var dragMin;
+var dragMax;
+
+var undoStack = [];
 
 // Piece
 
@@ -124,6 +137,12 @@ function Board(desc) {
             this.addPiece(piece);
         }
     }
+
+    // compute some stuff
+    this.primaryRow = 0;
+    if (this.pieces.length !== 0) {
+        this.primaryRow = Math.floor(this.pieces[0].position / this.size);
+    }
 }
 
 Board.prototype.addPiece = function(piece) {
@@ -132,6 +151,19 @@ Board.prototype.addPiece = function(piece) {
 
 Board.prototype.doMove = function(move) {
     this.pieces[move.piece].move(move.steps);
+}
+
+Board.prototype.undoMove = function(move) {
+    this.pieces[move.piece].move(-move.steps);
+}
+
+Board.prototype.isSolved = function() {
+    if (this.pieces.length === 0) {
+        return false;
+    }
+    var piece = this.pieces[0];
+    var x = Math.floor(piece.position % this.size);
+    return x + piece.size === this.size;
 }
 
 Board.prototype.pieceAt = function(index) {
@@ -193,16 +225,13 @@ Board.prototype.moves = function() {
 
 // GUI
 
-// var board = new Board("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
-var board = new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
-
 function computeScale(size) {
     var xscale = width / size;
     var yscale = height / size;
     return Math.min(xscale, yscale) * 0.9;
 }
 
-function mousePoint() {
+function mouseVector() {
     var size = board.size;
     var s = computeScale(size);
     var x = (mouseX - width / 2) / s + size / 2;
@@ -210,27 +239,41 @@ function mousePoint() {
     return createVector(x, y);
 }
 
-function mousePosition() {
-    var p = mousePoint();
+function mouseIndex() {
+    var p = mouseVector();
     var x = Math.floor(p.x);
     var y = Math.floor(p.y);
     return y * board.size + x;
 }
 
-var dragPiece = -1;
-var dragAnchor;
-var dragDelta;
+function touchStarted() {
+}
 
 function mousePressed() {
-    dragAnchor = mousePoint();
+    dragAnchor = mouseVector();
     dragDelta = createVector(0, 0);
-    dragPiece = board.pieceAt(mousePosition());
+    dragPiece = board.pieceAt(mouseIndex());
     if (dragPiece < 0) {
         return;
     }
     var piece = board.pieces[dragPiece];
+    // can't move walls
     if (piece.fixed) {
         dragPiece = -1;
+        return;
+    }
+    // determine max range
+    dragMin = 0;
+    dragMax = 0;
+    for (var move of board.moves()) {
+        if (move.piece === dragPiece) {
+            if (move.steps < dragMin) {
+                dragMin = move.steps;
+            }
+            if (move.steps > dragMax) {
+                dragMax = move.steps;
+            }
+        }
     }
 }
 
@@ -238,12 +281,15 @@ function mouseReleased() {
     if (dragPiece < 0) {
         return;
     }
-    dragDelta = p5.Vector.sub(mousePoint(), dragAnchor);
+    dragDelta = p5.Vector.sub(mouseVector(), dragAnchor);
     var piece = board.pieces[dragPiece];
     var steps = Math.round(piece.axis(dragDelta));
+    steps = Math.min(steps, dragMax);
+    steps = Math.max(steps, dragMin);
     for (var move of board.moves()) {
         if (move.piece === dragPiece && move.steps === steps) {
             board.doMove(move);
+            undoStack.push(move);
             break;
         }
     }
@@ -254,7 +300,21 @@ function mouseDragged() {
     if (dragPiece < 0) {
         return;
     }
-    dragDelta = p5.Vector.sub(mousePoint(), dragAnchor);
+    dragDelta = p5.Vector.sub(mouseVector(), dragAnchor);
+}
+
+function keyPressed() {
+    if (key === 'U') {
+        if (undoStack.length > 0) {
+            var move = undoStack.pop();
+            board.undoMove(move);
+        }
+    } else if (key === 'R') {
+        while (undoStack.length > 0) {
+            var move = undoStack.pop();
+            board.undoMove(move);
+        }
+    }
 }
 
 function setup() {
@@ -266,10 +326,6 @@ function windowResized() {
 }
 
 function draw() {
-    // var moves = board.moves();
-    // var move = moves[Math.floor(Math.random() * moves.length)];
-    // board.doMove(move);
-
     background(BackgroundColor);
 
     var size = board.size;
@@ -280,11 +336,28 @@ function draw() {
     scale(s);
     translate(-size / 2, -size / 2);
 
+    // exit
+    var ex = size;
+    var ey = board.primaryRow + 0.5;
+    var es = 0.1;
+    fill(GridLineColor);
+    noStroke();
+    beginShape();
+    vertex(ex, ey + es);
+    vertex(ex, ey - es);
+    vertex(ex + es, ey);
+    endShape(CLOSE);
+
     // board
     fill(BoardColor);
+    if (board.isSolved()) {
+        if (Date.now() % 500 < 250) {
+            fill("#FFFFFF");
+        }
+    }
     stroke(GridLineColor);
     strokeWeight(0.03);
-    rect(0, 0, size, size, 0.1);
+    rect(0, 0, size, size, 0.03);
 
     // walls
     noStroke();
@@ -337,11 +410,45 @@ function draw() {
     if (dragPiece >= 0) {
         var piece = board.pieces[dragPiece];
         var offset = piece.axis(dragDelta);
+        offset = Math.min(offset, dragMax);
+        offset = Math.max(offset, dragMin);
+        var steps = Math.round(offset);
+
+        // if (dragPiece === 0) {
+        //     fill(PrimaryPieceColor + "66");
+        // } else {
+        //     fill(PieceColor + "66");
+        // }
+        // stroke(PieceOutlineColor + "66");
+        // piece.draw(size, steps);
+
         if (dragPiece === 0) {
             fill(PrimaryPieceColor);
         } else {
             fill(PieceColor);
         }
+        stroke(PieceOutlineColor);
         piece.draw(size, offset);
     }
 }
+
+function loadBoard(desc) {
+    try {
+        board = new Board(desc);
+    }
+    catch (e) {
+        board = new Board("............AA......................");
+    }
+    undoStack = [];
+}
+
+window.onhashchange = function() {
+    loadBoard(location.hash.substring(1));
+}
+
+$(function(){
+    loadBoard(location.hash.substring(1));
+    // loadBoard("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
+    // loadBoard("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
+    // loadBoard("............AA......................");
+});
