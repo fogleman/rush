@@ -82,6 +82,10 @@ function Board(desc) {
 
     // determine board size
     this.size = Math.floor(Math.sqrt(desc.length));
+    if (this.size === 0) {
+        throw "board cannot be empty";
+    }
+
     this.size2 = this.size * this.size;
     if (this.size2 !== desc.length) {
         throw "boards must be square";
@@ -232,10 +236,12 @@ function computeScale(size) {
 }
 
 function mouseVector() {
+    var mx = mouseX || touchX;
+    var my = mouseY || touchY;
     var size = board.size;
     var s = computeScale(size);
-    var x = (mouseX - width / 2) / s + size / 2;
-    var y = (mouseY - height / 2) / s + size / 2;
+    var x = (mx - width / 2) / s + size / 2;
+    var y = (my - height / 2) / s + size / 2;
     return createVector(x, y);
 }
 
@@ -244,9 +250,6 @@ function mouseIndex() {
     var x = Math.floor(p.x);
     var y = Math.floor(p.y);
     return y * board.size + x;
-}
-
-function touchStarted() {
 }
 
 function mousePressed() {
@@ -301,6 +304,21 @@ function mouseDragged() {
         return;
     }
     dragDelta = p5.Vector.sub(mouseVector(), dragAnchor);
+}
+
+function touchStarted() {
+    mousePressed();
+    return false;
+}
+
+function touchEnded() {
+    mouseReleased();
+    return false;
+}
+
+function touchMoved() {
+    mouseDragged();
+    return false;
 }
 
 function keyPressed() {
@@ -434,21 +452,17 @@ function draw() {
 
 function loadBoard(desc) {
     try {
+        desc = desc || location.hash.substring(1);
         board = new Board(desc);
     }
     catch (e) {
-        board = new Board("............AA......................");
+        board = new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
     }
     undoStack = [];
 }
 
 window.onhashchange = function() {
-    loadBoard(location.hash.substring(1));
+    loadBoard();
 }
 
-$(function(){
-    loadBoard(location.hash.substring(1));
-    // loadBoard("BCDDE.BCF.EGB.FAAGHHHI.G..JIKKLLJMM.");
-    // loadBoard("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
-    // loadBoard("............AA......................");
-});
+loadBoard();
