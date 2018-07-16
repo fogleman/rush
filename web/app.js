@@ -518,6 +518,10 @@ var sketch = function(p) {
 new p5(sketch, 'view');
 
 window.onload = function() {
+    document.ontouchmove = function(event) {
+        event.preventDefault();
+    }
+
     window.onhashchange = function() {
         view.setBoard(hashToBoard());
     }
