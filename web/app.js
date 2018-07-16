@@ -1,31 +1,3 @@
-// new p5();
-
-// Constants
-
-var MinPieceSize = 2;
-var MaxPieceSize = 3;
-
-var BackgroundColor   = "#FFFFFF";
-var BoardColor        = "#F2EACD";
-var GridLineColor     = "#222222";
-var PrimaryPieceColor = "#CC3333";
-var PieceColor        = "#338899";
-var PieceOutlineColor = "#222222";
-var LabelColor        = "#222222";
-var WallColor         = "#222222";
-var WallBoltColor     = "#AAAAAA";
-
-// Globals
-var board;
-
-var dragPiece = -1;
-var dragAnchor;
-var dragDelta;
-var dragMin;
-var dragMax;
-
-var undoStack = [];
-
 // Piece
 
 function Piece(position, size, stride) {
@@ -39,7 +11,7 @@ Piece.prototype.move = function(steps) {
     this.position += this.stride * steps;
 }
 
-Piece.prototype.draw = function(boardSize, offset) {
+Piece.prototype.draw = function(p5, boardSize, offset) {
     offset = offset || 0;
     var i0 = this.position;
     var i1 = i0 + this.stride * (this.size - 1);
@@ -57,10 +29,10 @@ Piece.prototype.draw = function(boardSize, offset) {
     } else {
         y += offset;
     }
-    rect(x, y, w, h, 0.1);
+    p5.rect(x, y, w, h, 0.1);
 }
 
-Piece.prototype.axis = function(point) {
+Piece.prototype.pickAxis = function(point) {
     if (this.stride === 1) {
         return point.x;
     } else {
@@ -114,11 +86,8 @@ function Board(desc) {
             continue;
         }
         var ps = positions.get(label);
-        if (ps.length < MinPieceSize) {
-            throw "piece size < MinPieceSize";
-        }
-        if (ps.length > MaxPieceSize) {
-            throw "piece size > MaxPieceSize";
+        if (ps.length < 2) {
+            throw "piece size must be >= 2";
         }
         var stride = ps[1] - ps[0];
         if (stride !== 1 && stride !== this.size) {
@@ -227,189 +196,229 @@ Board.prototype.moves = function() {
     return moves;
 }
 
-// GUI
+// View
 
-function computeScale(size) {
-    var xscale = width / size;
-    var yscale = height / size;
+function View() {
+    this.board = new Board(".");
+    this.dragPiece = -1;
+    this.dragAnchor = null;
+    this.dragDelta = null;
+    this.dragMin = 0;
+    this.dragMax = 0;
+    this.undoStack = [];
+
+    this.backgroundColor   = "#FFFFFF";
+    this.boardColor        = "#F2EACD";
+    this.gridLineColor     = "#222222";
+    this.primaryPieceColor = "#CC3333";
+    this.pieceColor        = "#338899";
+    this.pieceOutlineColor = "#222222";
+    this.wallColor         = "#222222";
+    this.wallBoltColor     = "#AAAAAA";
+}
+
+View.prototype.bind = function(p5) {
+    this.p5 = p5;
+}
+
+View.prototype.setBoard = function(board) {
+    this.board = board;
+    this.undoStack = [];
+}
+
+View.prototype.computeScale = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    var xscale = p5.width / board.size;
+    var yscale = p5.height / board.size;
     return Math.min(xscale, yscale) * 0.9;
-}
+};
 
-function mouseVector() {
-    var mx = mouseX || touchX;
-    var my = mouseY || touchY;
-    var size = board.size;
-    var s = computeScale(size);
-    var x = (mx - width / 2) / s + size / 2;
-    var y = (my - height / 2) / s + size / 2;
-    return createVector(x, y);
-}
+View.prototype.mouseVector = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    var mx = p5.mouseX || p5.touchX;
+    var my = p5.mouseY || p5.touchY;
+    var scale = this.computeScale();
+    var x = (mx - p5.width / 2) / scale + board.size / 2;
+    var y = (my - p5.height / 2) / scale + board.size / 2;
+    return p5.createVector(x, y);
+};
 
-function mouseIndex() {
-    var p = mouseVector();
+View.prototype.mouseIndex = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    var p = this.mouseVector();
     var x = Math.floor(p.x);
     var y = Math.floor(p.y);
     return y * board.size + x;
-}
+};
 
-function mousePressed() {
-    dragAnchor = mouseVector();
-    dragDelta = createVector(0, 0);
-    dragPiece = board.pieceAt(mouseIndex());
-    if (dragPiece < 0) {
+View.prototype.mousePressed = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    this.dragAnchor = this.mouseVector();
+    this.dragDelta = p5.createVector(0, 0);
+    this.dragPiece = board.pieceAt(this.mouseIndex());
+    if (this.dragPiece < 0) {
         return;
     }
-    var piece = board.pieces[dragPiece];
+    var piece = board.pieces[this.dragPiece];
     // can't move walls
     if (piece.fixed) {
-        dragPiece = -1;
+        this.dragPiece = -1;
         return;
     }
     // determine max range
-    dragMin = 0;
-    dragMax = 0;
+    this.dragMin = 0;
+    this.dragMax = 0;
     for (var move of board.moves()) {
-        if (move.piece === dragPiece) {
-            if (move.steps < dragMin) {
-                dragMin = move.steps;
-            }
-            if (move.steps > dragMax) {
-                dragMax = move.steps;
-            }
+        if (move.piece === this.dragPiece) {
+            this.dragMin = Math.min(this.dragMin, move.steps);
+            this.dragMax = Math.max(this.dragMax, move.steps);
         }
     }
-}
+};
 
-function mouseReleased() {
-    if (dragPiece < 0) {
+View.prototype.mouseReleased = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    if (this.dragPiece < 0) {
         return;
     }
-    dragDelta = p5.Vector.sub(mouseVector(), dragAnchor);
-    var piece = board.pieces[dragPiece];
-    var steps = Math.round(piece.axis(dragDelta));
-    steps = Math.min(steps, dragMax);
-    steps = Math.max(steps, dragMin);
+    this.dragDelta = p5.Vector.sub(this.mouseVector(), this.dragAnchor);
+    var piece = board.pieces[this.dragPiece];
+    var steps = Math.round(piece.pickAxis(this.dragDelta));
+    steps = Math.min(steps, this.dragMax);
+    steps = Math.max(steps, this.dragMin);
     for (var move of board.moves()) {
-        if (move.piece === dragPiece && move.steps === steps) {
+        if (move.piece === this.dragPiece && move.steps === steps) {
             board.doMove(move);
-            undoStack.push(move);
+            this.undoStack.push(move);
             break;
         }
     }
-    dragPiece = -1;
-}
+    this.dragPiece = -1;
+};
 
-function mouseDragged() {
-    if (dragPiece < 0) {
+View.prototype.mouseDragged = function() {
+    var p5 = this.p5;
+    if (this.dragPiece < 0) {
         return;
     }
-    dragDelta = p5.Vector.sub(mouseVector(), dragAnchor);
-}
+    this.dragDelta = p5.Vector.sub(this.mouseVector(), this.dragAnchor);
+};
 
-function touchStarted() {
-    mousePressed();
+View.prototype.touchStarted = function() {
+    this.mousePressed();
     return false;
-}
+};
 
-function touchEnded() {
-    mouseReleased();
+View.prototype.touchEnded = function() {
+    this.mouseReleased();
     return false;
-}
+};
 
-function touchMoved() {
-    mouseDragged();
+View.prototype.touchMoved = function() {
+    this.mouseDragged();
     return false;
-}
+};
 
-function keyPressed() {
-    if (key === 'U') {
-        if (undoStack.length > 0) {
-            var move = undoStack.pop();
+View.prototype.keyPressed = function() {
+    var p5 = this.p5;
+    var board = this.board;
+    if (p5.key === 'U') {
+        if (this.undoStack.length > 0) {
+            var move = this.undoStack.pop();
             board.undoMove(move);
         }
-    } else if (key === 'R') {
-        while (undoStack.length > 0) {
-            var move = undoStack.pop();
+    } else if (p5.key === 'R') {
+        while (this.undoStack.length > 0) {
+            var move = this.undoStack.pop();
             board.undoMove(move);
         }
     }
-}
+};
 
-function setup() {
-    createCanvas(windowWidth, windowHeight);
-}
+View.prototype.setup = function() {
+    var p5 = this.p5;
+    p5.createCanvas(p5.windowWidth, p5.windowHeight);
+};
 
-function windowResized() {
-    resizeCanvas(windowWidth, windowHeight);
-}
+View.prototype.windowResized = function() {
+    var p5 = this.p5;
+    p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
+};
 
-function draw() {
-    background(BackgroundColor);
-
+View.prototype.draw = function() {
+    var p5 = this.p5;
+    var board = this.board;
     var size = board.size;
-    var s = computeScale(size);
 
-    resetMatrix();
-    translate(width / 2, height / 2);
-    scale(s);
-    translate(-size / 2, -size / 2);
+    p5.background(this.backgroundColor);
+
+    var scale = this.computeScale();
+    p5.resetMatrix();
+    p5.translate(p5.width / 2, p5.height / 2);
+    p5.scale(scale);
+    p5.translate(-size / 2, -size / 2);
 
     // exit
     var ex = size;
     var ey = board.primaryRow + 0.5;
     var es = 0.1;
-    fill(GridLineColor);
-    noStroke();
-    beginShape();
-    vertex(ex, ey + es);
-    vertex(ex, ey - es);
-    vertex(ex + es, ey);
-    endShape(CLOSE);
+    p5.fill(this.gridLineColor);
+    p5.noStroke();
+    p5.beginShape();
+    p5.vertex(ex, ey + es);
+    p5.vertex(ex, ey - es);
+    p5.vertex(ex + es, ey);
+    p5.endShape(p5.CLOSE);
 
     // board
-    fill(BoardColor);
+    p5.fill(this.boardColor);
     if (board.isSolved()) {
         if (Date.now() % 500 < 250) {
-            fill("#FFFFFF");
+            p5.fill("#FFFFFF");
         }
     }
-    stroke(GridLineColor);
-    strokeWeight(0.03);
-    rect(0, 0, size, size, 0.03);
+    p5.stroke(this.gridLineColor);
+    p5.strokeWeight(0.03);
+    p5.rect(0, 0, size, size, 0.03);
 
     // walls
-    noStroke();
-    ellipseMode(RADIUS);
+    p5.noStroke();
+    p5.ellipseMode(p5.RADIUS);
     for (var piece of board.pieces) {
         if (!piece.fixed) {
             continue;
         }
         var x = Math.floor(piece.position % size);
         var y = Math.floor(piece.position / size);
-        fill(WallColor);
-        rect(x, y, 1, 1);
+        p5.fill(this.wallColor);
+        p5.rect(x, y, 1, 1);
         var p = 0.15;
         var r = 0.04;
-        fill(WallBoltColor);
-        ellipse(x + p, y + p, r);
-        ellipse(x + 1 - p, y + p, r);
-        ellipse(x + p, y + 1 - p, r);
-        ellipse(x + 1 - p, y + 1 - p, r);
+        p5.fill(this.wallBoltColor);
+        p5.ellipse(x + p, y + p, r);
+        p5.ellipse(x + 1 - p, y + p, r);
+        p5.ellipse(x + p, y + 1 - p, r);
+        p5.ellipse(x + 1 - p, y + 1 - p, r);
     }
 
     // grid lines
-    stroke(GridLineColor);
-    strokeWeight(0.015);
+    p5.stroke(this.gridLineColor);
+    p5.strokeWeight(0.015);
     for (var i = 1; i < size; i++) {
-        line(i, 0, i, size);
-        line(0, i, size, i);
+        p5.line(i, 0, i, size);
+        p5.line(0, i, size, i);
     }
 
     // pieces
-    stroke(PieceOutlineColor);
-    strokeWeight(0.03);
+    p5.stroke(this.pieceOutlineColor);
+    p5.strokeWeight(0.03);
     for (var i = 0; i < board.pieces.length; i++) {
-        if (i === dragPiece) {
+        if (i === this.dragPiece) {
             continue;
         }
         var piece = board.pieces[i];
@@ -417,52 +426,73 @@ function draw() {
             continue;
         }
         if (i === 0) {
-            fill(PrimaryPieceColor);
+            p5.fill(this.primaryPieceColor);
         } else {
-            fill(PieceColor);
+            p5.fill(this.pieceColor);
         }
-        piece.draw(size);
+        piece.draw(p5, size);
     }
 
     // dragging
-    if (dragPiece >= 0) {
-        var piece = board.pieces[dragPiece];
-        var offset = piece.axis(dragDelta);
-        offset = Math.min(offset, dragMax);
-        offset = Math.max(offset, dragMin);
+    if (this.dragPiece >= 0) {
+        var piece = board.pieces[this.dragPiece];
+        var offset = piece.pickAxis(this.dragDelta);
+        offset = Math.min(offset, this.dragMax);
+        offset = Math.max(offset, this.dragMin);
         var steps = Math.round(offset);
 
-        // if (dragPiece === 0) {
-        //     fill(PrimaryPieceColor + "66");
+        // if (this.dragPiece === 0) {
+        //     p5.fill(this.primaryPieceColor + "66");
         // } else {
-        //     fill(PieceColor + "66");
+        //     p5.fill(this.pieceColor + "66");
         // }
-        // stroke(PieceOutlineColor + "66");
-        // piece.draw(size, steps);
+        // p5.stroke(this.pieceOutlineColor + "66");
+        // piece.draw(p5, size, steps);
 
-        if (dragPiece === 0) {
-            fill(PrimaryPieceColor);
+        if (this.dragPiece === 0) {
+            p5.fill(this.primaryPieceColor);
         } else {
-            fill(PieceColor);
+            p5.fill(this.pieceColor);
         }
-        stroke(PieceOutlineColor);
-        piece.draw(size, offset);
+        p5.stroke(this.pieceOutlineColor);
+        piece.draw(p5, size, offset);
     }
-}
+};
 
-function loadBoard(desc) {
+//
+
+function hashToBoard() {
     try {
-        desc = desc || location.hash.substring(1);
-        board = new Board(desc);
+        var desc = location.hash.substring(1).replace('z', '');
+        return new Board(desc);
     }
     catch (e) {
-        board = new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
+        return new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
     }
-    undoStack = [];
+    this.undoStack = [];
 }
+
+var view = new View();
+
+view.setBoard(hashToBoard());
 
 window.onhashchange = function() {
-    loadBoard();
+    view.setBoard(hashToBoard());
 }
 
-loadBoard();
+var sketch = function(p) {
+    p.Vector = p5.Vector;
+    view.bind(p);
+    p.draw = function() { view.draw(); }
+    p.keyPressed = function() { view.keyPressed(); }
+    p.mouseDragged = function() { view.mouseDragged(); }
+    p.mousePressed = function() { view.mousePressed(); }
+    p.mouseReleased = function() { view.mouseReleased(); }
+    p.setup = function() { view.setup(); };
+    p.touchEnded = function() { view.touchEnded(); }
+    p.touchMoved = function() { view.touchMoved(); }
+    p.touchStarted = function() { view.touchStarted(); }
+    p.windowResized = function() { view.windowResized(); }
+};
+
+new p5(sketch);
