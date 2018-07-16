@@ -1,3 +1,7 @@
+// Constants
+
+var UnusableHeight = 32 + 24 * 3;
+
 // Piece
 
 function Piece(position, size, stride) {
@@ -224,6 +228,7 @@ View.prototype.bind = function(p5) {
 View.prototype.setBoard = function(board) {
     this.board = board;
     this.undoStack = [];
+    this.changed();
 }
 
 View.prototype.computeScale = function() {
@@ -231,7 +236,7 @@ View.prototype.computeScale = function() {
     var board = this.board;
     var xscale = p5.width / board.size;
     var yscale = p5.height / board.size;
-    return Math.min(xscale, yscale) * 0.9;
+    return Math.min(xscale, yscale) * 0.99;
 };
 
 View.prototype.mouseVector = function() {
@@ -295,6 +300,7 @@ View.prototype.mouseReleased = function() {
         if (move.piece === this.dragPiece && move.steps === steps) {
             board.doMove(move);
             this.undoStack.push(move);
+            this.changed();
             break;
         }
     }
@@ -326,28 +332,46 @@ View.prototype.touchMoved = function() {
 
 View.prototype.keyPressed = function() {
     var p5 = this.p5;
-    var board = this.board;
     if (p5.key === 'U') {
-        if (this.undoStack.length > 0) {
-            var move = this.undoStack.pop();
-            board.undoMove(move);
-        }
+        this.undo();
     } else if (p5.key === 'R') {
-        while (this.undoStack.length > 0) {
-            var move = this.undoStack.pop();
-            board.undoMove(move);
-        }
+        this.reset();
     }
 };
 
+View.prototype.reset = function() {
+    var board = this.board;
+    while (this.undoStack.length > 0) {
+        var move = this.undoStack.pop();
+        board.undoMove(move);
+    }
+    this.changed();
+};
+
+View.prototype.undo = function() {
+    var board = this.board;
+    if (this.undoStack.length > 0) {
+        var move = this.undoStack.pop();
+        board.undoMove(move);
+    }
+    this.changed();
+};
+
+View.prototype.changed = function() {
+    var el = document.getElementById('numMoves');
+    if (el) {
+        el.textContent = this.undoStack.length;
+    }
+}
+
 View.prototype.setup = function() {
     var p5 = this.p5;
-    p5.createCanvas(p5.windowWidth, p5.windowHeight);
+    p5.createCanvas(p5.windowWidth, p5.windowHeight - UnusableHeight);
 };
 
 View.prototype.windowResized = function() {
     var p5 = this.p5;
-    p5.resizeCanvas(p5.windowWidth, p5.windowHeight);
+    p5.resizeCanvas(p5.windowWidth, p5.windowHeight - UnusableHeight);
 };
 
 View.prototype.draw = function() {
@@ -470,16 +494,11 @@ function hashToBoard() {
     catch (e) {
         return new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
     }
-    this.undoStack = [];
 }
 
 var view = new View();
 
 view.setBoard(hashToBoard());
-
-window.onhashchange = function() {
-    view.setBoard(hashToBoard());
-}
 
 var sketch = function(p) {
     p.Vector = p5.Vector;
@@ -496,4 +515,18 @@ var sketch = function(p) {
     p.windowResized = function() { view.windowResized(); }
 };
 
-new p5(sketch);
+new p5(sketch, 'view');
+
+window.onload = function() {
+    window.onhashchange = function() {
+        view.setBoard(hashToBoard());
+    }
+
+    document.getElementById('resetButton').onclick = function() {
+        view.reset();
+    }
+
+    document.getElementById('undoButton').onclick = function() {
+        view.undo();
+    }
+};
