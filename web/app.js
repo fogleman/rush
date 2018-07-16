@@ -234,9 +234,9 @@ View.prototype.setBoard = function(board) {
 View.prototype.computeScale = function() {
     var p5 = this.p5;
     var board = this.board;
-    var xscale = p5.width / board.size;
-    var yscale = p5.height / board.size;
-    return Math.min(xscale, yscale) * 0.99;
+    var xscale = (p5.width / board.size) * 0.9;
+    var yscale = (p5.height / board.size) * 0.99;
+    return Math.min(xscale, yscale);
 };
 
 View.prototype.mouseVector = function() {
