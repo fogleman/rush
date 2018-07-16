@@ -533,4 +533,9 @@ window.onload = function() {
     document.getElementById('undoButton').onclick = function() {
         view.undo();
     }
+
+    document.getElementById('randomButton').onclick = function() {
+        var desc = PUZZLES[Math.floor(Math.random() * PUZZLES.length)];
+        window.location.hash = desc;
+    }
 };

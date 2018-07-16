@@ -21,25 +21,18 @@ body {
     bottom: 0;
     padding: 24px 0;
     height: 32px;
-    line-height: 32px;
     text-align: center;
-    vertical-align: middle;
 }
 
 .info {
     margin: 0 32px;
 }
 
-@media (max-width: 512px) {
-    .info {
-        margin: 0 8px;
-    }
-
-}
-
 .label {
     font-size: 14px;
+    line-height: 24px;
     text-transform: uppercase;
+    vertical-align: baseline;
 }
 
 .value {
@@ -51,5 +44,14 @@ button {
     border-radius: 4px;
     padding: 4px 8px;
     width: 96px;
-    height: 32px;
+}
+
+@media (max-width: 512px) {
+    .info {
+        margin: 0 8px;
+    }
+    button {
+        font-size: 14px;
+        width: 72px;
+    }
 }

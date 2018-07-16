@@ -6,17 +6,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Rush Hour</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.1/p5.min.js"></script>
+        <script src="puzzles.js?bust=2"></script>
         <script src="app.js?bust=2"></script>
         <link rel="stylesheet" type="text/css" href="style.css?bust=2">
     </head>
     <body>
         <div id="view"></div>
         <div class="footer">
-            <button id="resetButton">Reset</button>
             <span class="info">
                 <span class="label">Moves:</span>
                 <span class="value" id="numMoves">0</span>
             </span>
+            <button id="randomButton">Random</button>
+            <button id="resetButton">Reset</button>
             <button id="undoButton">Undo</button>
         </div>
     </body>
