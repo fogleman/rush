@@ -126,7 +126,7 @@ func NewBoard(desc []string) (*Board, error) {
 	for y, row := range desc {
 		for x, value := range row {
 			label := string(value)
-			if label == "." {
+			if label == "." || label == "o" {
 				continue
 			}
 			i := y*w + x

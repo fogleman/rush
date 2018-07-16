@@ -20,7 +20,7 @@ Board::Board(std::string desc) :
     std::map<char, std::vector<int>> positions;
     for (int i = 0; i < desc.length(); i++) {
         const char label = desc[i];
-        if (label == '.') {
+        if (label == '.' || label == 'o') {
             continue;
         }
         positions[label].push_back(i);
