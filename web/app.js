@@ -79,7 +79,7 @@ function Board(desc) {
 
     // add pieces
     for (var label of labels) {
-        if (label === '.') {
+        if (label === '.' || label === 'o') {
             continue;
         }
         if (label === 'x') {
@@ -356,6 +356,7 @@ View.prototype.draw = function() {
     var size = board.size;
 
     p5.background(this.backgroundColor);
+    p5.strokeJoin(p5.ROUND);
 
     var scale = this.computeScale();
     p5.resetMatrix();
@@ -463,7 +464,7 @@ View.prototype.draw = function() {
 
 function hashToBoard() {
     try {
-        var desc = location.hash.substring(1).replace('z', '');
+        var desc = location.hash.substring(1);
         return new Board(desc);
     }
     catch (e) {
