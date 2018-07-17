@@ -48,7 +48,9 @@ def random_json():
     db = get_db()
     q = 'select * from rush where rowid = ?;'
     row = query_db(q, (rowid,), one=True)
-    return jsonify(row_dict(row))
+    resp = jsonify(row_dict(row))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
 
 # main
 
