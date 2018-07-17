@@ -234,15 +234,20 @@ View.prototype.setBoard = function(board, movesRequired) {
 }
 
 View.prototype.parseHash = function() {
-    var hash = location.hash.substring(1);
-    var i = hash.indexOf('/');
-    if (i < 0) {
-        var desc = hash;
-        this.setBoard(new Board(desc));
-    } else {
-        var desc = hash.substring(0, i);
-        var movesRequired = parseInt(hash.substring(i+1));
-        this.setBoard(new Board(desc), movesRequired);
+    try {
+        var hash = location.hash.substring(1);
+        var i = hash.indexOf('/');
+        if (i < 0) {
+            var desc = hash;
+            this.setBoard(new Board(desc));
+        } else {
+            var desc = hash.substring(0, i);
+            var movesRequired = parseInt(hash.substring(i+1));
+            this.setBoard(new Board(desc), movesRequired);
+        }
+    }
+    catch (e) {
+        this.setBoard(new Board("IBBxooIooLDDJAALooJoKEEMFFKooMGGHHHM"), 60);
     }
 }
 
