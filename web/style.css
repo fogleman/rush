@@ -20,12 +20,12 @@ body {
     right: 0;
     bottom: 0;
     padding: 24px 0;
-    height: 32px;
+    height: 72px;
     text-align: center;
 }
 
-.info {
-    margin: 0 32px;
+.buttons {
+    margin-top: 8px;
 }
 
 .label {
@@ -43,13 +43,11 @@ button {
     font-size: 18px;
     border-radius: 4px;
     padding: 4px 8px;
+    margin: 0 4px;
     width: 96px;
 }
 
 @media (max-width: 512px) {
-    .info {
-        margin: 0 8px;
-    }
     button {
         font-size: 14px;
         width: 72px;

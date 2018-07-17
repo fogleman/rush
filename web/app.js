@@ -1,6 +1,6 @@
 // Constants
 
-var UnusableHeight = 32 + 24 * 3;
+var UnusableHeight = 72 + 24 * 3;
 
 // Piece
 
@@ -203,7 +203,8 @@ Board.prototype.moves = function() {
 // View
 
 function View() {
-    this.board = new Board(".");
+    this.board = new Board("ooooooooooooAAoooooooooooooooooooooo");
+    this.movesRequired = -1;
     this.dragPiece = -1;
     this.dragAnchor = null;
     this.dragDelta = null;
@@ -225,10 +226,24 @@ View.prototype.bind = function(p5) {
     this.p5 = p5;
 }
 
-View.prototype.setBoard = function(board) {
+View.prototype.setBoard = function(board, movesRequired) {
     this.board = board;
+    this.movesRequired = movesRequired || -1;
     this.undoStack = [];
     this.changed();
+}
+
+View.prototype.parseHash = function() {
+    var hash = location.hash.substring(1);
+    var i = hash.indexOf('/');
+    if (i < 0) {
+        var desc = hash;
+        this.setBoard(new Board(desc));
+    } else {
+        var desc = hash.substring(0, i);
+        var movesRequired = parseInt(hash.substring(i+1));
+        this.setBoard(new Board(desc), movesRequired);
+    }
 }
 
 View.prototype.computeScale = function() {
@@ -358,9 +373,11 @@ View.prototype.undo = function() {
 };
 
 View.prototype.changed = function() {
-    var el = document.getElementById('numMoves');
-    if (el) {
-        el.textContent = this.undoStack.length;
+    $('#numMoves').text(this.undoStack.length);
+    if (this.movesRequired > 0) {
+        $('#movesRequired').text('/ ' + this.movesRequired);
+    } else {
+        $('#movesRequired').text('');
     }
 }
 
@@ -465,15 +482,6 @@ View.prototype.draw = function() {
         offset = Math.min(offset, this.dragMax);
         offset = Math.max(offset, this.dragMin);
         var steps = Math.round(offset);
-
-        // if (this.dragPiece === 0) {
-        //     p5.fill(this.primaryPieceColor + "66");
-        // } else {
-        //     p5.fill(this.pieceColor + "66");
-        // }
-        // p5.stroke(this.pieceOutlineColor + "66");
-        // piece.draw(p5, size, steps);
-
         if (this.dragPiece === 0) {
             p5.fill(this.primaryPieceColor);
         } else {
@@ -486,19 +494,13 @@ View.prototype.draw = function() {
 
 //
 
-function hashToBoard() {
-    try {
-        var desc = location.hash.substring(1);
-        return new Board(desc);
-    }
-    catch (e) {
-        return new Board("IBBx..I..LDDJAAL..J.KEEMFFK..MGGHHHM");
-    }
+function randomBoard() {
+    $.getJSON("https://www.michaelfogleman.com/rushserver/random.json", function(data) {
+        location.hash = data.desc + "/" + data.moves;
+    });
 }
 
 var view = new View();
-
-view.setBoard(hashToBoard());
 
 var sketch = function(p) {
     p.Vector = p5.Vector;
@@ -517,25 +519,26 @@ var sketch = function(p) {
 
 new p5(sketch, 'view');
 
-window.onload = function() {
+$(function() {
     document.ontouchmove = function(event) {
         event.preventDefault();
     }
 
     window.onhashchange = function() {
-        view.setBoard(hashToBoard());
+        view.parseHash();
     }
 
-    document.getElementById('resetButton').onclick = function() {
+    $('#resetButton').click(function() {
         view.reset();
-    }
+    });
 
-    document.getElementById('undoButton').onclick = function() {
+    $('#undoButton').click(function() {
         view.undo();
-    }
+    });
 
-    document.getElementById('randomButton').onclick = function() {
-        var desc = PUZZLES[Math.floor(Math.random() * PUZZLES.length)];
-        window.location.hash = desc;
-    }
-};
+    $('#randomButton').click(function() {
+        randomBoard();
+    });
+
+    view.parseHash();
+});

@@ -5,21 +5,24 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Rush Hour</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.1/p5.min.js"></script>
-        <script src="puzzles.js?bust=2"></script>
-        <script src="app.js?bust=2"></script>
-        <link rel="stylesheet" type="text/css" href="style.css?bust=2">
+        <script src="app.js?bust=3"></script>
+        <link rel="stylesheet" type="text/css" href="style.css?bust=3">
     </head>
     <body>
         <div id="view"></div>
         <div class="footer">
-            <span class="info">
+            <div class="info">
                 <span class="label">Moves:</span>
                 <span class="value" id="numMoves">0</span>
-            </span>
-            <button id="randomButton">Random</button>
-            <button id="resetButton">Reset</button>
-            <button id="undoButton">Undo</button>
+                <span class="label" id="movesRequired"></span>
+            </div>
+            <div class="buttons">
+                <button id="randomButton">Random</button>
+                <button id="resetButton">Reset</button>
+                <button id="undoButton">Undo</button>
+            </div>
         </div>
     </body>
 </html>
