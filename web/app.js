@@ -203,8 +203,8 @@ Board.prototype.moves = function() {
 // View
 
 function View() {
-    this.board = new Board("ooooooooooooAAoooooooooooooooooooooo");
-    this.movesRequired = -1;
+    this.board = new Board("IBBxooIooLDDJAALooJoKEEMFFKooMGGHHHM");
+    this.movesRequired = 60;
     this.dragPiece = -1;
     this.dragAnchor = null;
     this.dragDelta = null;
