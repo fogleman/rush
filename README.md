@@ -1,11 +1,8 @@
 # Rush Hour (the puzzle)
 
-This repo contains a bunch of stuff related to [Rush Hour](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)).
-You may also know this game from one of its iOS implementations, such as [Unblock Me](https://itunes.apple.com/us/app/unblock-me/id315019111?mt=8).
+This repo contains a bunch of stuff related to [Rush Hour](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)), a sliding block puzzle. You may also know this game from one of its iOS implementations, such as [Unblock Me](https://itunes.apple.com/us/app/unblock-me/id315019111?mt=8).
 
-![Examples](https://i.imgur.com/YlT8Y39.png)
-
-### Article
+### Read the Article
 
 https://www.michaelfogleman.com/rush/
 
