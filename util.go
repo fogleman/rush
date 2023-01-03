@@ -13,3 +13,11 @@ func maxInt(a, b int) int {
 	}
 	return b
 }
+
+func indexToLabelRune(i int) rune {
+	return 'A' + rune(i)
+}
+
+func indexToLabelString(i int) string {
+	return string(indexToLabelRune(i))
+}
