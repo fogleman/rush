@@ -26,6 +26,8 @@ const uint64_t MaxID = 268108; // 5x5
 // const uint64_t MaxID = 3670622351; // 6x6, 0-1 walls
 // const uint64_t MaxID = 27403231254; // 6x6, 0-2 walls
 
+// const uint64_t MaxID = 561276504436; // 7x7 - 5h42m
+
 const int BoardSize2 = BoardSize * BoardSize;
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
 const int H = 1; // horizontal stride
