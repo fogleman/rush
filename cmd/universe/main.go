@@ -191,7 +191,7 @@ func (pg *PositionGenerator) precomputeRow(y, x int, pieces []Piece) {
 			continue
 		}
 		p := y*w + x
-		pieces = append(pieces, Piece{p, s, Horizontal})
+		pieces = append(pieces, Piece{Position: p, Size: s, Orientation: Horizontal})
 		pg.precomputeRow(y, x+s, pieces)
 		pieces = pieces[:len(pieces)-1]
 	}
@@ -218,7 +218,7 @@ func (pg *PositionGenerator) precomputeCol(x, y int, pieces []Piece) {
 			continue
 		}
 		p := y*w + x
-		pieces = append(pieces, Piece{p, s, Vertical})
+		pieces = append(pieces, Piece{Position: p, Size: s, Orientation: Vertical})
 		pg.precomputeCol(x, y+s, pieces)
 		pieces = pieces[:len(pieces)-1]
 	}

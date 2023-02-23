@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	. "github.com/fogleman/rush"
+	"github.com/fogleman/rush"
 )
 
 const (
@@ -26,18 +26,18 @@ const (
 )
 
 type Enumerator struct {
-	Board           *Board
+	Board           *rush.Board
 	Seen            map[string]bool
-	Memo            *Memo
-	Solver          *Solver
-	HardestSolution Solution
-	HardestBoard    *Board
+	Memo            *rush.Memo
+	Solver          *rush.Solver
+	HardestSolution rush.Solution
+	HardestBoard    *rush.Board
 	Canonical       bool
-	CanonicalKey    MemoKey
+	CanonicalKey    rush.MemoKey
 	Count           int
 }
 
-func NewEnumerator(board *Board) *Enumerator {
+func NewEnumerator(board *rush.Board) *Enumerator {
 	e := &Enumerator{}
 	e.Board = board
 	e.Seen = make(map[string]bool)
@@ -69,8 +69,8 @@ func (e *Enumerator) hardestSearch(previousPiece int) {
 }
 
 func (e *Enumerator) HardestSearch() {
-	e.Memo = NewMemo()
-	e.Solver = NewSolver(e.Board)
+	e.Memo = rush.NewMemo()
+	e.Solver = rush.NewSolver(e.Board)
 	e.HardestBoard = e.Board.Copy()
 	e.HardestSolution = e.Solver.Solve()
 	e.hardestSearch(-1)
@@ -107,7 +107,7 @@ func (e *Enumerator) canonicalSearch(previousPiece int) {
 }
 
 func (e *Enumerator) CanonicalSearch() {
-	e.Memo = NewMemo()
+	e.Memo = rush.NewMemo()
 	e.Canonical = true
 	e.CanonicalKey = *e.Board.MemoKey()
 	e.canonicalSearch(-1)
@@ -148,17 +148,17 @@ func (e *Enumerator) place(after int) {
 	h := board.Height
 	i := len(board.Pieces)
 
-	for o := Horizontal; o <= Vertical; o++ {
+	for o := rush.Horizontal; o <= rush.Vertical; o++ {
 		for s := 2; s <= 3; s++ {
 			xx := w
 			yy := h
-			if o == Horizontal {
+			if o == rush.Horizontal {
 				xx = W - s + 1
 			} else {
 				yy = H - s + 1
 			}
 			for y := 0; y < yy; y++ {
-				if o == Horizontal && y == Py {
+				if o == rush.Horizontal && y == Py {
 					continue
 				}
 				for x := 0; x < xx; x++ {
@@ -166,7 +166,7 @@ func (e *Enumerator) place(after int) {
 					if p <= after {
 						continue
 					}
-					if board.AddPiece(Piece{p, s, o}) {
+					if board.AddPiece(rush.Piece{Position: p, Size: s, Orientation: o}) {
 						e.place(p)
 						board.RemovePiece(i)
 					}
@@ -181,8 +181,8 @@ func (e *Enumerator) Enumerate() {
 }
 
 func main() {
-	board := NewEmptyBoard(W, H)
-	board.AddPiece(Piece{P, 2, Horizontal})
+	board := rush.NewEmptyBoard(W, H)
+	board.AddPiece(rush.Piece{Position: P, Size: 2, Orientation: rush.Horizontal})
 	e := NewEnumerator(board)
 	e.Enumerate()
 	fmt.Println(len(e.Seen), e.Count)
