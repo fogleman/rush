@@ -8,6 +8,7 @@ body {
     position: fixed;
     font-family: sans-serif;
     color: #333;
+    overscroll-behavior-y: contain;
 }
 
 #view {
