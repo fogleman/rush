@@ -58,7 +58,7 @@ func (move Move) AbsSteps() int {
 }
 
 func (move Move) Label() string {
-	return string('A' + move.Piece)
+	return indexToLabelString(move.Piece)
 }
 
 func (move Move) String() string {
@@ -186,7 +186,7 @@ func (board *Board) String() string {
 		grid[i] = "x"
 	}
 	for i, piece := range board.Pieces {
-		label := string('A' + i)
+		label := indexToLabelString(i)
 		idx := piece.Position
 		stride := piece.Stride(w)
 		for j := 0; j < piece.Size; j++ {
@@ -213,7 +213,7 @@ func (board *Board) Hash() string {
 		grid[i] = 'x'
 	}
 	for i, piece := range board.Pieces {
-		label := rune('A' + i)
+		label := indexToLabelRune(i)
 		idx := piece.Position
 		stride := 1
 		if piece.Orientation == Vertical {
@@ -323,7 +323,7 @@ func (board *Board) Validate() error {
 	// validate pieces
 	primaryRow := pieces[0].Row(w)
 	for i, piece := range pieces {
-		label := string('A' + i)
+		label := indexToLabelString(i)
 		row := piece.Row(w)
 		col := piece.Col(w)
 

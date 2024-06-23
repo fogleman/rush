@@ -134,7 +134,7 @@ func renderBoard(board *Board) image.Image {
 			tx := px + pw/2
 			ty := py + ph/2
 			dc.SetHexColor(labelColor)
-			dc.DrawStringAnchored(string('A'+i), tx, ty, 0.5, 0.5)
+			dc.DrawStringAnchored(indexToLabelString(i), tx, ty, 0.5, 0.5)
 		}
 	}
 
