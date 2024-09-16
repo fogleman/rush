@@ -26,7 +26,7 @@ func main() {
 	fmt.Println()
 
 	unsolver := rush.NewUnsolver(board)
-	unsolved := unsolver.Unsolve()
+	unsolved, _ := unsolver.Unsolve()
 	solution := unsolved.Solve()
 
 	fmt.Println(unsolved)
