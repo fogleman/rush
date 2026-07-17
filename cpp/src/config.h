@@ -4,11 +4,19 @@
 
 #include "bb.h"
 
+#ifdef RUSH_BOARD_SIZE
+const int BoardSize = RUSH_BOARD_SIZE;
+#else
 const int BoardSize = 5;
+#endif
 const int PrimaryRow = 2;
 const int PrimarySize = 2;
 const int MinPieceSize = 2;
+#ifdef RUSH_MAX_PIECE_SIZE
+const int MaxPieceSize = RUSH_MAX_PIECE_SIZE;
+#else
 const int MaxPieceSize = 3;
+#endif
 const int MinWalls = 0;
 const int MaxWalls = 0;
 const int NumWorkers = 4;
