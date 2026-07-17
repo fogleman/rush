@@ -5,13 +5,18 @@
 
 Board::Board() :
     m_HorzMask(0),
-    m_VertMask(0)
+    m_VertMask(0),
+    m_WallMask(0),
+    m_Target(0)
 {
+    m_Pieces.reserve(BoardSize2);
 }
 
 Board::Board(std::string desc) :
     m_HorzMask(0),
-    m_VertMask(0)
+    m_VertMask(0),
+    m_WallMask(0),
+    m_Target(0)
 {
     if (desc.length() != BoardSize2) {
         throw "board string is wrong length";
@@ -21,6 +26,10 @@ Board::Board(std::string desc) :
     for (int i = 0; i < desc.length(); i++) {
         const char label = desc[i];
         if (label == '.' || label == 'o') {
+            continue;
+        }
+        if (label == 'x') {
+            m_WallMask |= (bb)1 << i;
             continue;
         }
         positions[label].push_back(i);
@@ -56,6 +65,10 @@ Board::Board(std::string desc) :
 }
 
 void Board::AddPiece(const Piece &piece) {
+    if (m_Pieces.empty()) {
+        const int row = piece.Position() / BoardSize;
+        m_Target = (row + 1) * BoardSize - piece.Size();
+    }
     m_Pieces.push_back(piece);
     if (piece.Stride() == H) {
         m_HorzMask |= piece.Mask();
@@ -173,6 +186,11 @@ void Board::Moves(std::vector<Move> &moves) const {
 
 std::string Board::String() const {
     std::string s(BoardSize2, '.');
+    for (int i = 0; i < BoardSize2; i++) {
+        if ((m_WallMask & ((bb)1 << i)) != 0) {
+            s[i] = 'x';
+        }
+    }
     for (int i = 0; i < m_Pieces.size(); i++) {
         const Piece &piece = m_Pieces[i];
         const char c = piece.Fixed() ? 'x' : 'A' + i;
@@ -190,6 +208,13 @@ std::string Board::String2D() const {
     for (int y = 0; y < BoardSize; y++) {
         const int p = y * (BoardSize + 1) + BoardSize;
         s[p] = '\n';
+    }
+    for (int i = 0; i < BoardSize2; i++) {
+        if ((m_WallMask & ((bb)1 << i)) != 0) {
+            const int y = i / BoardSize;
+            const int x = i % BoardSize;
+            s[y * (BoardSize + 1) + x] = 'x';
+        }
     }
     for (int i = 0; i < m_Pieces.size(); i++) {
         const Piece &piece = m_Pieces[i];

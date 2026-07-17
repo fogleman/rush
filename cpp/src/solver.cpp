@@ -1,6 +1,12 @@
 #include "solver.h"
 
+Solution::Solution() :
+    m_Solvable(false)
+{
+}
+
 Solution::Solution(const std::vector<Move> &moves) :
+    m_Solvable(true),
     m_Moves(moves)
 {
 }
@@ -11,12 +17,25 @@ Solution Solver::Solve(Board &board) {
         return Solution(m_Moves);
     }
     m_Memo.clear();
+    size_t previousMemoSize = 0;
+    int noChange = 0;
+    const int cutoff = BoardSize - board.Pieces()[0].Size();
     for (int i = 1; ; i++) {
         m_Moves.resize(i);
         m_MoveBuffers.resize(i);
         if (Search(board, 0, i, -1)) {
             return Solution(m_Moves);
         }
+        const size_t memoSize = m_Memo.size();
+        if (memoSize == previousMemoSize) {
+            noChange++;
+        } else {
+            noChange = 0;
+        }
+        if (noChange > cutoff) {
+            return Solution();
+        }
+        previousMemoSize = memoSize;
     }
 }
 
@@ -25,12 +44,25 @@ int Solver::CountMoves(Board &board) {
         return 0;
     }
     m_Memo.clear();
+    size_t previousMemoSize = 0;
+    int noChange = 0;
+    const int cutoff = BoardSize - board.Pieces()[0].Size();
     for (int i = 1; ; i++) {
         m_Moves.resize(i);
         m_MoveBuffers.resize(i);
         if (Search(board, 0, i, -1)) {
             return i;
         }
+        const size_t memoSize = m_Memo.size();
+        if (memoSize == previousMemoSize) {
+            noChange++;
+        } else {
+            noChange = 0;
+        }
+        if (noChange > cutoff) {
+            return -1;
+        }
+        previousMemoSize = memoSize;
     }
 }
 
@@ -50,7 +82,7 @@ bool Solver::Search(Board &board, int depth, int maxDepth, int previousPiece) {
     const bb boardMask = board.Mask();
     const auto &primary = board.Pieces()[0];
     const int i0 = primary.Position() + primary.Size();
-    const int i1 = Target + primary.Size() - 1;
+    const int i1 = board.Target() + primary.Size() - 1;
     int minMoves = 0;
     for (int i = i0; i <= i1; i++) {
         const bb mask = (bb)1 << i;

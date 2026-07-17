@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/container/small_vector.hpp>
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -19,7 +18,11 @@ public:
     explicit Board(std::string desc);
 
     bb Mask() const {
-        return m_HorzMask | m_VertMask;
+        return m_HorzMask | m_VertMask | m_WallMask;
+    }
+
+    bb WallMask() const {
+        return m_WallMask;
     }
 
     bb HorzMask() const {
@@ -34,12 +37,16 @@ public:
         return std::make_tuple(m_HorzMask, m_VertMask);
     }
 
-    const boost::container::small_vector<Piece, BoardSize2> &Pieces() const {
+    const std::vector<Piece> &Pieces() const {
         return m_Pieces;
     }
 
+    int Target() const {
+        return m_Target;
+    }
+
     bool Solved() const {
-        return m_Pieces[0].Position() == Target;
+        return m_Pieces[0].Position() == m_Target;
     }
 
     void AddPiece(const Piece &piece);
@@ -58,7 +65,9 @@ public:
 private:
     bb m_HorzMask;
     bb m_VertMask;
-    boost::container::small_vector<Piece, BoardSize2> m_Pieces;
+    bb m_WallMask;
+    int m_Target;
+    std::vector<Piece> m_Pieces;
 };
 
 std::ostream& operator<<(std::ostream &stream, const Board &board);
