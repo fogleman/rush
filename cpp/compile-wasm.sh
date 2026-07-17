@@ -6,8 +6,8 @@
 #   1. Activate emsdk:  source /path/to/emsdk/emsdk_env.sh   (emcc must be on PATH)
 #   2. From cpp/:       ./compile-wasm.sh
 #   3. Commit the regenerated artifacts in the monorepo:
-#        packages/unblockrace/src/services/solverWasm.js   (glue, generated - do not edit)
-#        apps/unblockrace/public/solver/solver.wasm        (binary, fetched at runtime)
+#        build/wasm/solverWasm.js   (glue, generated - do not edit)
+#        build/wasm/solver.wasm     (binary, fetched at runtime)
 #      The TS loader passes locateFile to point the glue at /solver/solver.wasm,
 #      so the default .wasm filename baked into the glue is irrelevant.
 #
@@ -21,10 +21,6 @@
 
 set -euo pipefail
 cd "$(dirname "$0")"
-
-MONOREPO="${MONOREPO:-/Users/jamesacres/Documents/git/bubblyclouds-app}"
-
-mkdir -p build/wasm
 
 # GROWABLE_ARRAYBUFFERS=0: with ALLOW_MEMORY_GROWTH, emscripten 6 defaults to a
 # resizable ArrayBuffer, which Chrome's TextDecoder rejects at runtime
@@ -44,11 +40,3 @@ emcc -O3 -flto -std=c++17 -DRUSH_BOARD_SIZE=6 -DRUSH_MAX_PIECE_SIZE=6 \
 # a plain string to keep the bundler out of it.
 sed -i '' 's|new URL("solverWasm.wasm",import.meta.url).href|"solverWasm.wasm"|' build/wasm/solverWasm.js
 
-mkdir -p "$MONOREPO/packages/unblockrace/src/services"
-mkdir -p "$MONOREPO/apps/unblockrace/public/solver"
-cp build/wasm/solverWasm.js "$MONOREPO/packages/unblockrace/src/services/solverWasm.js"
-cp build/wasm/solverWasm.wasm "$MONOREPO/apps/unblockrace/public/solver/solver.wasm"
-
-echo "Wrote:"
-ls -la "$MONOREPO/packages/unblockrace/src/services/solverWasm.js" \
-       "$MONOREPO/apps/unblockrace/public/solver/solver.wasm"
