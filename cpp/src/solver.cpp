@@ -5,33 +5,34 @@ Solution::Solution(const std::vector<Move> &moves) :
 {
 }
 
-Solution Solver::Solve(Board &board) {
-    m_Moves.resize(0);
-    if (board.Solved()) {
-        return Solution(m_Moves);
-    }
-    m_Memo.clear();
-    for (int i = 1; ; i++) {
-        m_Moves.resize(i);
-        m_MoveBuffers.resize(i);
-        if (Search(board, 0, i, -1)) {
-            return Solution(m_Moves);
-        }
-    }
-}
-
-int Solver::CountMoves(Board &board) {
+int Solver::Deepen(Board &board, int maxDepth) {
     if (board.Solved()) {
         return 0;
     }
     m_Memo.clear();
-    for (int i = 1; ; i++) {
+    for (int i = 1; maxDepth < 0 || i <= maxDepth; i++) {
         m_Moves.resize(i);
         m_MoveBuffers.resize(i);
         if (Search(board, 0, i, -1)) {
             return i;
         }
     }
+    return -1;
+}
+
+Solution Solver::Solve(Board &board) {
+    // Search() fills m_Moves in place, so on success it already holds exactly
+    // the solution; this also truncates it to empty for an already-solved board.
+    m_Moves.resize(Deepen(board, -1));
+    return Solution(m_Moves);
+}
+
+int Solver::CountMoves(Board &board) {
+    return Deepen(board, -1);
+}
+
+bool Solver::SolvableWithin(Board &board, int maxDepth) {
+    return Deepen(board, maxDepth) >= 0;
 }
 
 bool Solver::Search(Board &board, int depth, int maxDepth, int previousPiece) {
@@ -72,7 +73,6 @@ bool Solver::Search(Board &board, int depth, int maxDepth, int previousPiece) {
         bool solved = Search(board, depth + 1, maxDepth, move.Piece());
         board.UndoMove(move);
         if (solved) {
-            m_Memo[board.Key()] = height - 1;
             m_Moves[depth] = move;
             return true;
         }

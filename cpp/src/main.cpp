@@ -1,9 +1,11 @@
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include "board.h"
 #include "cluster.h"
@@ -14,16 +16,61 @@
 using namespace std;
 using namespace std::chrono;
 
-typedef std::function<void(const Cluster &)> CallbackFunc;
+typedef std::function<void(uint64_t id, const Cluster &)> CallbackFunc;
 
-void worker(const int wi, const int wn, CallbackFunc func) {
+// One instance per worker, so the increments below never touch another thread's
+// cache line and never need the output lock. The totals are only summed when a
+// puzzle is reported, which is rare; taking a lock for every cluster instead
+// would serialize all the workers billions of times per run. Only the owning
+// worker writes, so relaxed atomics cost nothing but keep the reads defined.
+struct Counts {
+    std::atomic<uint64_t> in{0};
+    std::atomic<uint64_t> canonical{0};
+    std::atomic<uint64_t> solvable{0};
+    std::atomic<uint64_t> minimal{0};
+    char padding[64 - 4 * sizeof(std::atomic<uint64_t>)];
+};
+
+struct Totals {
+    uint64_t in = 0;
+    uint64_t canonical = 0;
+    uint64_t solvable = 0;
+    uint64_t minimal = 0;
+};
+
+void bump(std::atomic<uint64_t> &counter) {
+    counter.store(
+        counter.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+}
+
+Totals sum(const std::vector<Counts> &counts) {
+    Totals totals;
+    for (const Counts &c : counts) {
+        totals.in += c.in.load(std::memory_order_relaxed);
+        totals.canonical += c.canonical.load(std::memory_order_relaxed);
+        totals.solvable += c.solvable.load(std::memory_order_relaxed);
+        totals.minimal += c.minimal.load(std::memory_order_relaxed);
+    }
+    return totals;
+}
+
+void worker(const int wi, const int wn, Counts &counts, CallbackFunc func) {
     Enumerator enumerator;
+    // reused across clusters: its arena and hash table are the expensive part
+    Cluster cluster;
     enumerator.Enumerate([&](uint64_t id, const Board &board) {
         if (id % wn != wi) {
             return;
         }
-        Cluster cluster(id, board);
-        func(cluster);
+        cluster.Explore(board);
+        bump(counts.in);
+        if (cluster.Canonical()) bump(counts.canonical);
+        if (cluster.Solvable()) bump(counts.solvable);
+        if (cluster.Minimal()) bump(counts.minimal);
+        if (!cluster.Canonical() || !cluster.Solvable() || !cluster.Minimal()) {
+            return;
+        }
+        func(id, cluster);
     });
 }
 
@@ -38,26 +85,18 @@ int main() {
 
     mutex m;
 
+    const int wn = NumWorkers;
+    std::vector<Counts> counts(wn);
     uint64_t maxSeenID = 0;
-    uint64_t numIn = 0;
-    uint64_t numCanonical = 0;
-    uint64_t numSolvable = 0;
-    uint64_t numMinimal = 0;
 
     auto start = steady_clock::now();
 
-    auto callback = [&](const Cluster &c) {
+    // only called for clusters that yield a puzzle
+    auto callback = [&](uint64_t id, const Cluster &c) {
         lock_guard<mutex> lock(m);
 
-        numIn++;
-        if (c.Canonical()) numCanonical++;
-        if (c.Solvable()) numSolvable++;
-        if (c.Minimal()) numMinimal++;
-        if (!c.Canonical() || !c.Solvable() || !c.Minimal()) {
-            return;
-        }
-
-        maxSeenID = std::max(maxSeenID, c.ID());
+        const Totals totals = sum(counts);
+        maxSeenID = std::max(maxSeenID, id);
         const Board &unsolved = c.Unsolved();
         const double pct = (double)maxSeenID / (double)MaxID;
         const double hrs = duration<double>(steady_clock::now() - start).count() / 3600;
@@ -83,23 +122,24 @@ int main() {
             << pct << " pct "
             << hrs << " hrs "
             << est << " est - "
-            << numIn << " inp "
-            << numCanonical << " can "
-            << numSolvable << " slv "
-            << numMinimal << " min"
+            << totals.in << " inp "
+            << totals.canonical << " can "
+            << totals.solvable << " slv "
+            << totals.minimal << " min"
             << endl;
     };
 
     std::vector<std::thread> threads;
-    const int wn = NumWorkers;
     for (int wi = 0; wi < wn; wi++) {
-        threads.push_back(std::thread(worker, wi, wn, callback));
+        threads.push_back(
+            std::thread(worker, wi, wn, std::ref(counts[wi]), callback));
     }
     for (int wi = 0; wi < wn; wi++) {
         threads[wi].join();
     }
 
     // print final stats to stderr
+    const Totals totals = sum(counts);
     const double pct = (double)maxSeenID / (double)MaxID;
     const double hrs = duration<double>(steady_clock::now() - start).count() / 3600;
     const double est = pct > 0 ? hrs / pct : 0;
@@ -108,10 +148,10 @@ int main() {
         << 1.0 << " pct "
         << hrs << " hrs "
         << est << " est - "
-        << numIn << " inp "
-        << numCanonical << " can "
-        << numSolvable << " slv "
-        << numMinimal << " min"
+        << totals.in << " inp "
+        << totals.canonical << " can "
+        << totals.solvable << " slv "
+        << totals.minimal << " min"
         << endl;
     return 0;
 }

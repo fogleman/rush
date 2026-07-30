@@ -34,14 +34,14 @@ Enumerator::Enumerator() {
     ComputePositionEntries();
 }
 
-void Enumerator::Enumerate(EnumeratorFunc func) {
+void Enumerator::Enumerate(const EnumeratorFunc &func) {
     Board board;
     uint64_t id = 0;
     PopulatePrimaryRow(func, board, id);
 }
 
 void Enumerator::PopulatePrimaryRow(
-    EnumeratorFunc func, Board &board, uint64_t &id) const
+    const EnumeratorFunc &func, Board &board, uint64_t &id) const
 {
     for (const auto &pe : m_RowEntries[PrimaryRow]) {
         for (const auto &piece : pe.Pieces()) {
@@ -55,7 +55,7 @@ void Enumerator::PopulatePrimaryRow(
 }
 
 void Enumerator::PopulateRow(
-    EnumeratorFunc func, Board &board, uint64_t &id, int y,
+    const EnumeratorFunc &func, Board &board, uint64_t &id, int y,
     bb mask, bb require) const
 {
     if (DoWalls) {
@@ -97,7 +97,7 @@ void Enumerator::PopulateRow(
 }
 
 void Enumerator::PopulateColumn(
-    EnumeratorFunc func, Board &board, uint64_t &id, int x,
+    const EnumeratorFunc &func, Board &board, uint64_t &id, int x,
     bb mask, bb require) const
 {
     if (x >= BoardSize) {

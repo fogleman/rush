@@ -39,16 +39,19 @@ typedef std::function<void(uint64_t id, const Board &)> EnumeratorFunc;
 class Enumerator {
 public:
     Enumerator();
-    void Enumerate(EnumeratorFunc func);
+    // The callback is passed by reference all the way down: taking it by value
+    // copies the std::function at every level of the recursion, and heap
+    // allocates on each copy if the captures are too large to store inline.
+    void Enumerate(const EnumeratorFunc &func);
 
 private:
     void PopulatePrimaryRow(
-        EnumeratorFunc func, Board &board, uint64_t &id) const;
+        const EnumeratorFunc &func, Board &board, uint64_t &id) const;
     void PopulateRow(
-        EnumeratorFunc func, Board &board, uint64_t &id, int y,
+        const EnumeratorFunc &func, Board &board, uint64_t &id, int y,
         bb mask, bb require) const;
     void PopulateColumn(
-        EnumeratorFunc func, Board &board, uint64_t &id, int x,
+        const EnumeratorFunc &func, Board &board, uint64_t &id, int x,
         bb mask, bb require) const;
 
     void ComputeGroups(std::vector<int> &sizes, int sum);
