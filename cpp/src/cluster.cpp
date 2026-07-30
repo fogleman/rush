@@ -8,7 +8,19 @@ namespace {
 
 const int32_t UnknownDistance = std::numeric_limits<int32_t>::max();
 
+// The table is grow-only and shared by every cluster this instance explores.
+//
+// Restarting it small per cluster looks appealing, since cluster sizes are
+// wildly skewed and most are tiny, but it measures slower at both 5x5 and 6x6:
+// the skew cuts the other way. Growing back up rehashes every node already
+// inserted, and that cost lands on the big clusters, which is where most of the
+// states are -- at 6x6 one percent of clusters hold forty percent of the states.
+// Sizing from the previous cluster's node count does not rescue it either.
 const size_t InitialTableSize = 4096;
+
+// Ceiling on recorded adjacency, so one enormous cluster cannot balloon a
+// worker's memory. Past it the backward pass falls back to regenerating moves.
+const size_t MaxEdges = 4 << 20;
 
 // Load the table to at most 3/4, which linear probing tolerates well.
 bool TableIsFull(const size_t numNodes, const size_t tableSize) {
@@ -120,15 +132,24 @@ bool Cluster::ForEachMove(const Node &node, F fn) const {
     return true;
 }
 
-void Cluster::BeginCluster() {
-    m_Nodes.clear();
+// Retires every entry currently in the table: bumping the stamp is what makes
+// reusing the buffer across clusters, and growing within one, free of clearing.
+void Cluster::NewGeneration() {
     if (++m_Generation == 0) {
         // The stamp wrapped, so entries left by older clusters can no longer be
         // told apart from fresh ones. Clearing outright is the only way back,
-        // and it happens once every four billion clusters.
+        // and it happens once every four billion generations.
         std::fill(m_Table.begin(), m_Table.end(), 0);
         m_Generation = 1;
     }
+}
+
+void Cluster::BeginCluster() {
+    m_Nodes.clear();
+    m_Edges.clear();
+    m_EdgeStart.clear();
+    m_HaveEdges = true;
+    NewGeneration();
     if (m_Table.empty()) {
         GrowTable();
     }
@@ -136,6 +157,7 @@ void Cluster::BeginCluster() {
 
 void Cluster::GrowTable() {
     const size_t size = m_Table.empty() ? InitialTableSize : m_Table.size() * 2;
+    // assign zeroes the buffer, which retires every entry already in it
     m_Table.assign(size, 0);
     m_TableMask = size - 1;
     for (size_t i = 0; i < m_Nodes.size(); i++) {
@@ -147,8 +169,7 @@ void Cluster::GrowTable() {
     }
 }
 
-// Inserts a state if it is new, returning whether it was.
-bool Cluster::Insert(const State state, const bb horz, const bb vert) {
+uint32_t Cluster::Insert(const State state, const bb horz, const bb vert) {
     if (TableIsFull(m_Nodes.size(), m_Table.size())) {
         GrowTable();
     }
@@ -161,10 +182,11 @@ bool Cluster::Insert(const State state, const bb horz, const bb vert) {
             assert(m_Nodes.size() + 1 < UINT32_MAX);
             m_Nodes.push_back({state, horz, vert, UnknownDistance});
             m_Table[slot] = ((uint64_t)m_Generation << 32) | m_Nodes.size();
-            return true;
+            return (uint32_t)(m_Nodes.size() - 1);
         }
-        if (m_Nodes[(uint32_t)entry - 1].state == state) {
-            return false;
+        const uint32_t index = (uint32_t)entry - 1;
+        if (m_Nodes[index].state == state) {
+            return index;
         }
         slot = (slot + 1) & m_TableMask;
     }
@@ -214,13 +236,21 @@ void Cluster::Explore(const Board &input) {
         if (IsSolved(node.state)) {
             m_Solvable = true;
         }
+        // hoisted out of the loop below, where it is a perfectly predicted branch
+        const bool recordEdges = m_HaveEdges;
+        if (recordEdges) {
+            m_EdgeStart.push_back((uint32_t)m_Edges.size());
+        }
         const bool canonical = ForEachMove(node,
             [&](const State state, const bb horz, const bb vert)
         {
             if (horz < inputHorz || (horz == inputHorz && vert < inputVert)) {
                 return false;
             }
-            Insert(state, horz, vert);
+            const uint32_t index = Insert(state, horz, vert);
+            if (recordEdges) {
+                m_Edges.push_back(index);
+            }
             return true;
         });
         if (!canonical) {
@@ -228,6 +258,15 @@ void Cluster::Explore(const Board &input) {
             m_Solvable = false;
             return;
         }
+        if (m_HaveEdges && m_Edges.size() > MaxEdges) {
+            // Give up on adjacency rather than grow without bound. Checked once
+            // per node, so a node's run may spill slightly past the ceiling.
+            m_HaveEdges = false;
+        }
+    }
+    if (m_HaveEdges) {
+        // sentinel, so node i's run always ends at m_EdgeStart[i + 1]
+        m_EdgeStart.push_back((uint32_t)m_Edges.size());
     }
 
     m_Canonical = true;
@@ -251,32 +290,44 @@ void Cluster::Explore(const Board &input) {
     bb hardestHorz = inputHorz;
     bb hardestVert = inputVert;
 
-    for (size_t i = 0; i < m_Queue.size(); i++) {
-        const Node node = m_Nodes[m_Queue[i]];
-        const int32_t distance = node.distance + 1;
-        ForEachMove(node, [&](const State state, const bb, const bb) {
-            const uint32_t index = Find(state);
-            Node &neighbor = m_Nodes[index];
-            if (neighbor.distance <= distance) {
-                return true;
-            }
-            neighbor.distance = distance;
-            m_Queue.push_back(index);
-            if (distance > m_MaxDistance) {
-                m_MaxDistance = distance;
+    const auto relax = [&](const uint32_t index, const int32_t distance) {
+        Node &neighbor = m_Nodes[index];
+        if (neighbor.distance <= distance) {
+            return;
+        }
+        neighbor.distance = distance;
+        m_Queue.push_back(index);
+        if (distance > m_MaxDistance) {
+            m_MaxDistance = distance;
+            hardest = neighbor.state;
+            hardestHorz = neighbor.horz;
+            hardestVert = neighbor.vert;
+        } else if (distance == m_MaxDistance) {
+            if (neighbor.horz < hardestHorz ||
+                (neighbor.horz == hardestHorz && neighbor.vert < hardestVert)) {
                 hardest = neighbor.state;
                 hardestHorz = neighbor.horz;
                 hardestVert = neighbor.vert;
-            } else if (distance == m_MaxDistance) {
-                if (neighbor.horz < hardestHorz ||
-                    (neighbor.horz == hardestHorz && neighbor.vert < hardestVert)) {
-                    hardest = neighbor.state;
-                    hardestHorz = neighbor.horz;
-                    hardestVert = neighbor.vert;
-                }
             }
-            return true;
-        });
+        }
+    };
+
+    for (size_t i = 0; i < m_Queue.size(); i++) {
+        const uint32_t current = m_Queue[i];
+        const int32_t distance = m_Nodes[current].distance + 1;
+        if (m_HaveEdges) {
+            // walk the recorded adjacency: no move generation, no hashing
+            const uint32_t end = m_EdgeStart[current + 1];
+            for (uint32_t e = m_EdgeStart[current]; e < end; e++) {
+                relax(m_Edges[e], distance);
+            }
+        } else {
+            const Node node = m_Nodes[current];
+            ForEachMove(node, [&](const State state, const bb, const bb) {
+                relax(Find(state), distance);
+                return true;
+            });
+        }
     }
 
     m_Unsolved = ToBoard(hardest);

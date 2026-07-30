@@ -126,8 +126,10 @@ private:
     bool ForEachMove(const Node &node, F fn) const;
 
     void BeginCluster();
+    void NewGeneration();
     void GrowTable();
-    bool Insert(const State state, const bb horz, const bb vert);
+    // Returns the state's node index, inserting it if it is new.
+    uint32_t Insert(const State state, const bb horz, const bb vert);
     uint32_t Find(const State state) const;
 
     PieceInfo m_Pieces[MaxPieces];
@@ -140,6 +142,14 @@ private:
     uint64_t m_TableMask = 0;
     uint32_t m_Generation = 0;
     Solver m_Solver;
+
+    // Adjacency recorded during the forward pass, so the backward pass can walk
+    // the graph without regenerating moves or hashing anything. Nodes are
+    // expanded in index order, so each node's neighbors form one contiguous run
+    // and m_EdgeStart[i] .. m_EdgeStart[i + 1] delimits node i's.
+    std::vector<uint32_t> m_Edges;
+    std::vector<uint32_t> m_EdgeStart;
+    bool m_HaveEdges = false;
 
     bool m_Canonical = false;
     bool m_Solvable = false;
