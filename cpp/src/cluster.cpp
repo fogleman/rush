@@ -97,36 +97,44 @@ Board Cluster::ToBoard(const State state) const {
 }
 
 template <class F>
-bool Cluster::ForEachMove(const Node &node, F fn) const {
+bool Cluster::ForEachPieceMove(const Node &node, const int i, F fn) const {
+    const PieceInfo &info = m_Pieces[i];
+    if (info.size == 1) {
+        // a wall never moves
+        return true;
+    }
     const bb all = node.horz | node.vert;
+    const int offset = Offset(node.state, i);
+    // the board with this piece lifted off it
+    const bb restHorz = info.horz ? (node.horz & ~info.mask[offset]) : node.horz;
+    const bb restVert = info.horz ? node.vert : (node.vert & ~info.mask[offset]);
+    const auto visit = [&](const int k) {
+        return fn(
+            WithOffset(node.state, i, k),
+            info.horz ? (restHorz | info.mask[k]) : restHorz,
+            info.horz ? restVert : (restVert | info.mask[k]));
+    };
+    // Offsets are bounded by the piece's own line, so sliding needs no edge
+    // masks: only the cell being entered has to be free.
+    for (int k = offset - 1; k >= 0 && (all & info.firstCell[k]) == 0; k--) {
+        if (!visit(k)) {
+            return false;
+        }
+    }
+    for (int k = offset + 1;
+         k <= info.maxOffset && (all & info.lastCell[k]) == 0; k++) {
+        if (!visit(k)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <class F>
+bool Cluster::ForEachMove(const Node &node, F fn) const {
     for (int i = 0; i < m_NumPieces; i++) {
-        const PieceInfo &info = m_Pieces[i];
-        if (info.size == 1) {
-            // a wall never moves
-            continue;
-        }
-        const int offset = Offset(node.state, i);
-        // the board with this piece lifted off it
-        const bb restHorz = info.horz ? (node.horz & ~info.mask[offset]) : node.horz;
-        const bb restVert = info.horz ? node.vert : (node.vert & ~info.mask[offset]);
-        const auto visit = [&](const int k) {
-            return fn(
-                WithOffset(node.state, i, k),
-                info.horz ? (restHorz | info.mask[k]) : restHorz,
-                info.horz ? restVert : (restVert | info.mask[k]));
-        };
-        // Offsets are bounded by the piece's own line, so sliding needs no edge
-        // masks: only the cell being entered has to be free.
-        for (int k = offset - 1; k >= 0 && (all & info.firstCell[k]) == 0; k--) {
-            if (!visit(k)) {
-                return false;
-            }
-        }
-        for (int k = offset + 1;
-             k <= info.maxOffset && (all & info.lastCell[k]) == 0; k++) {
-            if (!visit(k)) {
-                return false;
-            }
+        if (!ForEachPieceMove(node, i, fn)) {
+            return false;
         }
     }
     return true;
@@ -213,6 +221,7 @@ void Cluster::Explore(const Board &input) {
     m_Solvable = false;
     m_Minimal = false;
     m_NumStates = 0;
+    m_Radius = 0;
     m_MaxDistance = 0;
     // reset rather than leave the previous cluster's board behind: this
     // instance is reused, and results that are not filled in below should read
@@ -224,13 +233,32 @@ void Cluster::Explore(const Board &input) {
 
     const bb inputHorz = input.HorzMask();
     const bb inputVert = input.VertMask();
-    Insert(StartState(input), inputHorz, inputVert);
+    const State startState = StartState(input);
+    // Goal enumeration always seeds from a goal state; anything else only
+    // reaches here if some other caller hands over an arbitrary board, and the
+    // radius shortcut below is not sound for those.
+    const bool seedIsGoal = IsSolved(startState);
+    Insert(startState, inputHorz, inputVert);
 
-    // Forward pass: reach every state in the cluster. If any of them sorts
+    // Forward pass: reach every state in the cluster. If any *goal* state sorts
     // before the input then the input is not this cluster's canonical
-    // representative, and whichever state is will report the cluster instead,
-    // so there is nothing left to do here.
+    // representative, and whichever goal state is will report the cluster
+    // instead, so there is nothing left to do here.
+    //
+    // The test is restricted to goal states because the enumeration only emits
+    // goal states: the input is one, and the state that would sort below it has
+    // to be a candidate the enumeration could have produced. Comparing against
+    // every state instead would discard clusters nothing else reports.
+    //
+    // Nodes are visited in the order they were inserted, which is breadth-first
+    // order, so the levels are contiguous runs and tracking where the current
+    // one ends is all it takes to know the radius.
+    size_t levelEnd = 1;
     for (size_t i = 0; i < m_Nodes.size(); i++) {
+        if (i == levelEnd) {
+            m_Radius++;
+            levelEnd = m_Nodes.size();
+        }
         // by value: inserting below can reallocate m_Nodes
         const Node node = m_Nodes[i];
         if (IsSolved(node.state)) {
@@ -244,7 +272,8 @@ void Cluster::Explore(const Board &input) {
         const bool canonical = ForEachMove(node,
             [&](const State state, const bb horz, const bb vert)
         {
-            if (horz < inputHorz || (horz == inputHorz && vert < inputVert)) {
+            if (IsSolved(state) &&
+                (horz < inputHorz || (horz == inputHorz && vert < inputVert))) {
                 return false;
             }
             const uint32_t index = Insert(state, horz, vert);
@@ -275,6 +304,16 @@ void Cluster::Explore(const Board &input) {
         return;
     }
 
+    // The seed is a goal state, so no state can be further from the goal set
+    // than it is from the seed: the forward radius is an upper bound on the
+    // cluster's eccentricity. A cluster that cannot reach the threshold stops
+    // here, with no backward pass, no hardest-state extraction, no minimality
+    // test and no histogram -- which is the whole point of the threshold, since
+    // the forward pass is the only part that cannot be avoided.
+    if (seedIsGoal && m_Radius < MinMoves) {
+        return;
+    }
+
     // Backward pass: breadth-first from every goal state at once, which gives
     // each state its distance to the nearest goal.
     m_Queue.clear();
@@ -286,6 +325,7 @@ void Cluster::Explore(const Board &input) {
     }
 
     // the input itself stands in until something further away turns up
+    uint32_t hardestIndex = 0;
     State hardest = m_Nodes[0].state;
     bb hardestHorz = inputHorz;
     bb hardestVert = inputVert;
@@ -299,12 +339,14 @@ void Cluster::Explore(const Board &input) {
         m_Queue.push_back(index);
         if (distance > m_MaxDistance) {
             m_MaxDistance = distance;
+            hardestIndex = index;
             hardest = neighbor.state;
             hardestHorz = neighbor.horz;
             hardestVert = neighbor.vert;
         } else if (distance == m_MaxDistance) {
             if (neighbor.horz < hardestHorz ||
                 (neighbor.horz == hardestHorz && neighbor.vert < hardestVert)) {
+                hardestIndex = index;
                 hardest = neighbor.state;
                 hardestHorz = neighbor.horz;
                 hardestVert = neighbor.vert;
@@ -330,6 +372,13 @@ void Cluster::Explore(const Board &input) {
         }
     }
 
+    // The radius is only an upper bound, so a cluster can still fall short of
+    // the threshold here. Stop before the minimality test, which is the
+    // expensive part of what remains.
+    if (m_MaxDistance < MinMoves) {
+        return;
+    }
+
     m_Unsolved = ToBoard(hardest);
 
     // A puzzle is minimal when no piece can be removed without making it
@@ -343,10 +392,35 @@ void Cluster::Explore(const Board &input) {
         // if there is nothing to remove.
         minimal = m_NumPieces == 1;
     } else {
-        const Solution solution = m_Solver.Solve(m_Unsolved);
+        // Any piece that moves in some shortest solution is provably
+        // non-blocking: deleting its moves from that solution leaves every
+        // other move legal, since removing a piece only frees cells, and
+        // reaches the goal in strictly fewer moves. Walking down the distance
+        // field the backward pass just built produces such a solution in
+        // m_MaxDistance steps with no search at all.
         m_PieceMoved.assign(m_NumPieces, false);
-        for (const Move &move : solution.Moves()) {
-            m_PieceMoved[move.Piece()] = true;
+        uint32_t current = hardestIndex;
+        for (int step = 0; step < m_MaxDistance; step++) {
+            const Node node = m_Nodes[current];
+            const int32_t want = node.distance - 1;
+            bool found = false;
+            for (int i = 0; i < m_NumPieces && !found; i++) {
+                ForEachPieceMove(node, i,
+                    [&](const State state, const bb, const bb)
+                {
+                    const uint32_t index = Find(state);
+                    if (m_Nodes[index].distance != want) {
+                        return true;
+                    }
+                    m_PieceMoved[i] = true;
+                    current = index;
+                    found = true;
+                    return false;
+                });
+            }
+            // the distance field is a gradient: every state above zero has a
+            // neighbor one step closer
+            assert(found);
         }
         for (int i = 1; i < m_NumPieces && minimal; i++) {
             if (m_PieceMoved[i]) {
@@ -354,7 +428,7 @@ void Cluster::Explore(const Board &input) {
             }
             Board board(m_Unsolved);
             board.RemovePiece(i);
-            minimal = m_Solver.SolvableWithin(board, m_MaxDistance - 1);
+            minimal = Reduced().SolvableWithin(board, m_MaxDistance - 1);
         }
     }
     if (!minimal) {
@@ -366,4 +440,57 @@ void Cluster::Explore(const Board &input) {
     for (const Node &node : m_Nodes) {
         m_Distances[node.distance]++;
     }
+}
+
+Cluster &Cluster::Reduced() {
+    if (!m_Reduced) {
+        m_Reduced.reset(new Cluster());
+    }
+    return *m_Reduced;
+}
+
+bool Cluster::SolvableWithin(const Board &input, const int maxLevels) {
+    BuildPieceInfo(input);
+    BeginCluster();
+    // no backward pass here, so the adjacency would only cost memory
+    m_HaveEdges = false;
+
+    const State startState = StartState(input);
+    if (IsSolved(startState)) {
+        return true;
+    }
+    if (maxLevels <= 0) {
+        return false;
+    }
+    Insert(startState, input.HorzMask(), input.VertMask());
+
+    bool solved = false;
+    const auto expand = [&](const State state, const bb horz, const bb vert) {
+        if (IsSolved(state)) {
+            solved = true;
+            return false;
+        }
+        Insert(state, horz, vert);
+        return true;
+    };
+
+    // Breadth-first, as in the forward pass: the levels are contiguous runs of
+    // m_Nodes, so the cap is a comparison. Nodes at level maxLevels - 1 are the
+    // last ones expanded, since their neighbors are exactly maxLevels moves out.
+    size_t levelEnd = 1;
+    int level = 0;
+    for (size_t i = 0; i < m_Nodes.size(); i++) {
+        if (i == levelEnd) {
+            if (++level >= maxLevels) {
+                break;
+            }
+            levelEnd = m_Nodes.size();
+        }
+        // by value: inserting below can reallocate m_Nodes
+        const Node node = m_Nodes[i];
+        if (!ForEachMove(node, expand)) {
+            break;
+        }
+    }
+    return solved;
 }

@@ -4,7 +4,7 @@
 
 #include "bb.h"
 
-const int BoardSize = 5;
+const int BoardSize = 6;
 const int PrimaryRow = 2;
 const int PrimarySize = 2;
 const int MinPieceSize = 2;
@@ -13,22 +13,34 @@ const int MinWalls = 0;
 const int MaxWalls = 0;
 const int NumWorkers = 4;
 
-// const uint64_t MaxID = 1348; // 4x4
-// const uint64_t MaxID = 9803; // 4x4, 0-1 walls
-// const uint64_t MaxID = 33952; // 4x4, 0-2 walls
-// const uint64_t MaxID = 76837; // 4x4, 0-3 walls
+// Only puzzles needing at least this many moves are reported, and a cluster is
+// abandoned as early as it can be proven not to qualify. Zero builds the full
+// database; a tail threshold turns the backward pass, the minimality test and
+// the histogram into rounding errors, which is what makes a top-N run at 6x6
+// or 7x7 affordable. See Cluster::Explore.
+const int MinMoves = 38;
 
-const uint64_t MaxID = 268108; // 5x5
-// const uint64_t MaxID = 2988669; // 5x5, 0-1 walls
-// const uint64_t MaxID = 16330429; // 5x5, 0-2 walls
-
-// const uint64_t MaxID = 243502785; // 6x6
-// const uint64_t MaxID = 3670622351; // 6x6, 0-1 walls
-// const uint64_t MaxID = 27403231254; // 6x6, 0-2 walls
-
-// const uint64_t MaxID = 561276504436; // 7x7 - 5h42m
+// Positions in the old packed enumeration, kept as a record of how big each
+// board is. Progress is no longer measured against them: goal enumeration emits
+// far fewer positions (124,886 at 5x5, 88,914,655 at 6x6), and work is addressed
+// by row combination now -- see Enumerator::NumRowCombos, which is 11^4 at 5x5,
+// 22^5 at 6x6 and 41^6 at 7x7.
+//
+//        1,348 // 4x4
+//        9,803 // 4x4, 0-1 walls
+//       33,952 // 4x4, 0-2 walls
+//       76,837 // 4x4, 0-3 walls
+//      268,109 // 5x5
+//    2,988,670 // 5x5, 0-1 walls
+//   16,330,430 // 5x5, 0-2 walls
+//  243,502,786 // 6x6
+// 3,670,622,352 // 6x6, 0-1 walls
+// 27,403,231,255 // 6x6, 0-2 walls
+// 561,276,504,437 // 7x7
 
 const int BoardSize2 = BoardSize * BoardSize;
+const bb BoardMask =
+    BoardSize2 >= 64 ? ~(bb)0 : (((bb)1 << BoardSize2) - 1);
 const int Target = PrimaryRow * BoardSize + BoardSize - PrimarySize;
 const int H = 1; // horizontal stride
 const int V = BoardSize; // vertical stride

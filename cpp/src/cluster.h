@@ -1,11 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
 #include "board.h"
-#include "solver.h"
 
 // Cluster explores one cluster (one connected component of the state graph)
 // and reports what the puzzle database needs to know about it.
@@ -17,6 +17,13 @@
 class Cluster {
 public:
     void Explore(const Board &input);
+
+    // True if the board can reach a solved state in at most maxLevels moves.
+    // Breadth-first, capped at maxLevels levels and stopped at the first goal
+    // state found, so an unsolvable board costs one bounded search rather than
+    // an unbounded iterative-deepening ladder. Overwrites everything Explore()
+    // reports, so call it on a separate instance.
+    bool SolvableWithin(const Board &input, int maxLevels);
 
     // True if the board passed to Explore() was the lexicographically smallest
     // state in its cluster. When false, exploration stopped early and every
@@ -125,6 +132,11 @@ private:
     template <class F>
     bool ForEachMove(const Node &node, F fn) const;
 
+    // The same, for one piece only, which is what the minimality test needs:
+    // it has to know which piece each step of a solution moves.
+    template <class F>
+    bool ForEachPieceMove(const Node &node, int i, F fn) const;
+
     void BeginCluster();
     void NewGeneration();
     void GrowTable();
@@ -141,7 +153,14 @@ private:
     std::vector<bool> m_PieceMoved;
     uint64_t m_TableMask = 0;
     uint32_t m_Generation = 0;
-    Solver m_Solver;
+
+    // A second instance, used only for the bounded reachability searches the
+    // minimality test needs. It runs the same machinery -- piece info, packed
+    // states, hash table -- over a board with one piece removed, on its own
+    // buffers, so the cluster being explored is left untouched. Allocated on
+    // first use, since most clusters never get that far.
+    std::unique_ptr<Cluster> m_Reduced;
+    Cluster &Reduced();
 
     // Adjacency recorded during the forward pass, so the backward pass can walk
     // the graph without regenerating moves or hashing anything. Nodes are
@@ -155,6 +174,9 @@ private:
     bool m_Solvable = false;
     bool m_Minimal = false;
     int m_NumStates = 0;
+    // Deepest forward BFS level, i.e. the largest distance from the seed. An
+    // upper bound on m_MaxDistance whenever the seed is a goal state.
+    int m_Radius = 0;
     int m_MaxDistance = 0;
     Board m_Unsolved;
     std::vector<int> m_Distances;

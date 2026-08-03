@@ -5,20 +5,24 @@
 
 #include "config.h"
 
-PositionEntry::PositionEntry(const int group, const std::vector<Piece> &pieces) :
+PositionEntry::PositionEntry(
+    const int group, const std::vector<Piece> &pieces, const bool clearRequire) :
     m_Group(group),
     m_Pieces(pieces),
     m_Mask(0),
-    m_Require(0)
+    m_Require(0),
+    m_Walls(0)
 {
     bb movableMask = 0;
     for (const auto &piece : pieces) {
         m_Mask |= piece.Mask();
-        if (!piece.Fixed()) {
+        if (piece.Fixed()) {
+            m_Walls++;
+        } else {
             movableMask |= piece.Mask();
         }
     }
-    if (!pieces.empty()) {
+    if (!pieces.empty() && !clearRequire) {
         const int stride = pieces[0].Stride();
         if (stride == H) {
             m_Require = (movableMask >> stride) & ~m_Mask & ~RightColumn;
@@ -28,81 +32,78 @@ PositionEntry::PositionEntry(const int group, const std::vector<Piece> &pieces) 
     }
 }
 
-Enumerator::Enumerator() {
+Enumerator::Enumerator() :
+    m_NumRowCombos(1)
+{
     std::vector<int> sizes;
     ComputeGroups(sizes, 0);
     ComputePositionEntries();
+    for (int y = 0; y < BoardSize; y++) {
+        m_NumRowCombos *= m_RowEntries[y].size();
+    }
 }
 
-void Enumerator::Enumerate(const EnumeratorFunc &func) {
+void Enumerator::Enumerate(const EnumeratorFunc &func) const {
+    for (uint64_t combo = 0; combo < m_NumRowCombos; combo++) {
+        EnumerateRowCombo(combo, func);
+    }
+}
+
+void Enumerator::EnumerateRowCombo(
+    uint64_t combo, const EnumeratorFunc &func) const
+{
+    const PositionEntry *rows[BoardSize];
+    bb mask = 0;
+    bb require = 0;
+    int walls = 0;
+    for (int y = 0; y < BoardSize; y++) {
+        const auto &entries = m_RowEntries[y];
+        const PositionEntry &pe = entries[combo % entries.size()];
+        combo /= entries.size();
+        rows[y] = &pe;
+        mask |= pe.Mask();
+        require |= pe.Require();
+        walls += pe.Walls();
+    }
+    if (DoWalls && (walls > MaxWalls || walls < MinWalls)) {
+        // there are no vertical walls, so the count is already final
+        return;
+    }
+
+    // A necessary condition, checked in front of the whole column DFS: a
+    // required cell can only be covered by a vertical piece, and a vertical
+    // piece covering a cell has to extend to the cell above or below it, which
+    // must in turn be free of row pieces. A few instructions against a DFS.
+    const bb free = ~mask & BoardMask;
+    const bb reachable = ((free << V) | (free >> V)) & BoardMask;
+    if ((require & ~reachable) != 0) {
+        return;
+    }
+
+    // The primary row goes on first, then the other rows top to bottom, then the
+    // columns left to right. Piece labels in a reported board follow this order,
+    // so it is part of the output format.
     Board board;
-    uint64_t id = 0;
-    PopulatePrimaryRow(func, board, id);
-}
-
-void Enumerator::PopulatePrimaryRow(
-    const EnumeratorFunc &func, Board &board, uint64_t &id) const
-{
-    for (const auto &pe : m_RowEntries[PrimaryRow]) {
-        for (const auto &piece : pe.Pieces()) {
-            board.AddPiece(piece);
-        }
-        PopulateRow(func, board, id, 0, pe.Mask(), pe.Require());
-        for (int i = 0; i < pe.Pieces().size(); i++) {
-            board.PopPiece();
-        }
+    for (const auto &piece : rows[PrimaryRow]->Pieces()) {
+        board.AddPiece(piece);
     }
-}
-
-void Enumerator::PopulateRow(
-    const EnumeratorFunc &func, Board &board, uint64_t &id, int y,
-    bb mask, bb require) const
-{
-    if (DoWalls) {
-        int walls = 0;
-        for (const auto &piece : board.Pieces()) {
-            if (piece.Fixed()) {
-                walls++;
-            }
-        }
-        if (walls > MaxWalls) {
-            return;
-        }
-        if (y >= BoardSize && walls < MinWalls) {
-            return;
-        }
-    }
-    if (y >= BoardSize) {
-        PopulateColumn(func, board, id, 0, mask, require);
-        return;
-    }
-    if (y == PrimaryRow) {
-        PopulateRow(func, board, id, y + 1, mask, require);
-        return;
-    }
-    for (const auto &pe : m_RowEntries[y]) {
-        if ((mask & pe.Mask()) != 0) {
+    for (int y = 0; y < BoardSize; y++) {
+        if (y == PrimaryRow) {
             continue;
         }
-        for (const auto &piece : pe.Pieces()) {
+        for (const auto &piece : rows[y]->Pieces()) {
             board.AddPiece(piece);
         }
-        PopulateRow(
-            func, board, id, y + 1,
-            mask | pe.Mask(), require | pe.Require());
-        for (int i = 0; i < pe.Pieces().size(); i++) {
-            board.PopPiece();
-        }
     }
+    PopulateColumn(func, board, 0, mask, require);
 }
 
 void Enumerator::PopulateColumn(
-    const EnumeratorFunc &func, Board &board, uint64_t &id, int x,
+    const EnumeratorFunc &func, Board &board, int x,
     bb mask, bb require) const
 {
     if (x >= BoardSize) {
-        func(id, board);
-        id++;
+        func(board);
         return;
     }
     for (const auto &pe : m_ColumnEntries[x]) {
@@ -120,7 +121,7 @@ void Enumerator::PopulateColumn(
             board.AddPiece(piece);
         }
         PopulateColumn(
-            func, board, id, x + 1,
+            func, board, x + 1,
             mask | pe.Mask(), require | pe.Require());
         for (int i = 0; i < pe.Pieces().size(); i++) {
             board.PopPiece();
@@ -216,9 +217,20 @@ void Enumerator::ComputeRow(int y, int x, std::vector<Piece> &pieces) {
                     return;
                 }
             }
+            // Goal enumeration: the primary piece sits on the target, so this
+            // row admits exactly one placement of it (plus whatever walls fit
+            // behind it). Every position emitted is then solvable by
+            // construction, and canonicality is decided among a cluster's goal
+            // states only -- see Cluster::Explore.
+            if (ps[0].Position() != Target) {
+                return;
+            }
         }
         const int group = GroupForPieces(ps);
-        m_RowEntries[y].emplace_back(PositionEntry(group, ps));
+        // The primary's position is pinned, not minimized, so requiring the
+        // cell behind it to be occupied would wrongly discard positions.
+        m_RowEntries[y].emplace_back(
+            PositionEntry(group, ps, y == PrimaryRow));
         return;
     }
     for (int s = MinPieceSize; s <= MaxPieceSize; s++) {
