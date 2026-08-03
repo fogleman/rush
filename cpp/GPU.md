@@ -4,6 +4,10 @@ An analysis of whether the C++ solver on the `claude-performance` branch could b
 rewritten for a GPU, and how it would be structured. All numbers below were
 measured on that branch; the methodology is at the end.
 
+If the goal is the top N hardest 7x7 puzzles rather than a complete database, see
+[Wanting only the top N](#wanting-only-the-top-n) — it changes less than one
+would hope, and the reasons are worth knowing before starting.
+
 ## Short answer
 
 Yes, and the payoff is large enough to matter: 7x7 is currently out of reach on a
@@ -365,6 +369,169 @@ Independent of any GPU work, and each measured above:
    and recorded here so nobody else pursues it. (One move alone rejects nothing:
    `PositionEntry::Require` already guarantees it.)
 
+## Wanting only the top N
+
+If the goal is the N hardest 7x7 puzzles for N in the 10k–100k range, rather than
+a complete database, the pipeline changes — but the change is worth about 2x, not
+orders of magnitude, and the two shortcuts that would give orders of magnitude
+both measure as dead ends. Those negative results are the useful part of this
+section.
+
+### What the threshold is worth
+
+Sizing first. At 6x6 there are ~0.47M minimal puzzles in total, distributed like
+this in the tail (1-in-997 sample, so counts are scaled):
+
+| threshold | puzzles at or above |
+|---|---|
+| ≥ 15 moves | ~114,000 |
+| ≥ 16 moves | ~88,000 |
+| ≥ 20 moves | ~25,000 |
+| ≥ 23 moves | ~15,000 |
+| ≥ 24 moves | ~9,000 |
+
+So top-100k sits at about 15–16 moves and top-10k at about 23–24. The 100k figure
+rests on ~100 sampled puzzles and is reliable; the 10k figure rests on ~10 and is
+not, and a 1-in-997 sample will not contain the genuinely hardest puzzles at all.
+Either way, N of 10k–100k lands deep in the tail.
+
+Which is where the temptation lies, because the work is not there:
+
+| clusters with eccentricity ≥ T | share of forward expansions |
+|---|---|
+| ≥ 5 | 58.5% |
+| ≥ 10 | 17.3% |
+| ≥ 15 | 4.1% |
+| ≥ 20 | 0.81% |
+| ≥ 25 | 0.16% |
+
+Over 99% of the exploration goes into clusters that a top-10k run will discard.
+If you could identify them in advance you would be done in an afternoon.
+
+### Two dead ends
+
+**There is no sound prune.** Eccentricity is a global property of the cluster: it
+is the maximum over all states of the distance to the nearest goal, so you cannot
+know it without enumerating the whole connected component. Nor can a smaller
+layout bound a larger one. Removing a piece never lengthens the optimal solution
+— that is what makes the minimality test work — so a sub-layout's difficulty is a
+*lower* bound on its supersets, never an upper one. Pruning needs an upper bound.
+Adding a piece can raise the difficulty arbitrarily, so no upper bound exists.
+
+**No cheap layout feature predicts hardness.** This one had to be measured rather
+than argued. Four features computable from the layout alone, with no search, each
+tested as a one-sided cut against the hard clusters at 6x6 (446,808 layouts, 951
+with eccentricity ≥ 15, 166 with ≥ 20):
+
+| feature | best usable cut | expansions kept | recall at ≥15 | recall at ≥20 |
+|---|---|---|---|---|
+| piece count | ≥ 9 | 94.2% | 99.4% | 100% |
+| piece count | ≥ 10 | 82.3% | 95.9% | 99.4% |
+| occupancy | ≥ 22 | 78.6% | 95.8% | 98.8% |
+| vertical pieces left of target | ≥ 2 | 90.4% | 97.8% | 99.4% |
+| positional freedom `Σ log2(maxOffset+1)` | ≥ 20 | 88.8% | 97.2% | 100% |
+
+The best trade on offer discards 18–21% of the work for a 4% loss of the puzzles
+you were looking for. Every feature's distribution over hard clusters has
+essentially the same shape as its distribution over all clusters — hard 6x6
+puzzles have 10–13 pieces and 25–29 occupied cells, which is simply where most
+layouts are. Hardness is not visible in coarse structure. Combining the features
+is unlikely to rescue this given how weak each is alone.
+
+A related intuition also fails: at 5x5 the largest clusters are the easy ones
+(the biggest, 4,768 states, needs 3 moves), which suggests capping cluster size.
+At 6x6 the correlation reverses — mean cluster size climbs from 37 states at
+eccentricity 0 to ~11,000 at 24, and the largest cluster containing a ≥15-move
+puzzle has 74,266 states. A cap that keeps every hard puzzle saves ~5% of the
+work.
+
+### What the threshold actually buys
+
+Per-cluster, once a threshold `T` is active:
+
+- **Skip the minimality check unless the cluster clears `T`.** 24% of exploration
+  time today, and at a tail threshold it becomes a rounding error.
+- **Cap the backward pass at `T` levels** and skip the distance histogram, the
+  hardest-state extraction and the tie-break for everything below. Most of the
+  remaining 5%.
+- The forward pass survives intact, because that is the part that cannot be
+  avoided.
+
+That leaves roughly the forward pass alone: about a 1.3x saving. Combine it with
+the goal-position enumeration below and the total is ~2x versus building the full
+database.
+
+### Enumerate goal positions instead
+
+This is the largest single win available, it is not specific to top-N, and it is
+provable rather than heuristic. Instead of enumerating every packed layout, pin
+the primary piece on the target and pack only the other pieces.
+
+It is sound and complete for solvable clusters. Every solvable cluster contains at
+least one goal state; take the lexicographically smallest. If any non-primary
+piece in it could slide to a lower offset, the result is still a goal state — the
+primary has not moved — and has a smaller `(horz, vert)` key, contradicting
+minimality. So the lex-smallest goal state has every non-primary piece at offset
+zero or blocked from behind, which is exactly what `PositionEntry::Require`
+encodes. Canonicality is then decided among the cluster's goal states only.
+
+Measured, with the goal enumeration and goal-mode canonicality both implemented:
+
+| | packed (today) | goal positions |
+|---|---|---|
+| positions emitted, 6x6 | 243,502,786 | 88,914,655 |
+| distinct solvable clusters found | 33.27M | 33.14M |
+| minimal puzzles found | ~0.48M | ~0.46M |
+| expansions on non-canonical clusters | 19.6% | 13.4% |
+| expansions on canonical-but-unsolvable | 17.6% | **0%** |
+| expansions per distinct solvable cluster | 1000.9 | **706.3** |
+| seconds per 1M distinct solvable clusters | 441.0 | **339.9** |
+
+At 5x5, where a full run is cheap enough to check exactly, the two enumerations
+agree to the last puzzle: 62,106 solvable clusters and 1,730 minimal puzzles from
+either, out of 268,109 packed positions versus 124,886 goal positions. The 6x6
+figures differ by a few percent only because the two runs sample different
+1-in-997 subsets.
+
+Every enumerated position is solvable by construction, which is what removes the
+canonical-but-unsolvable clusters — a fifth of the expansions today, and pure
+waste for any purpose.
+
+### What this means for the GPU design
+
+Less than it means for the CPU. The primitive is unchanged: a bounded BFS is
+exactly what a threshold test wants. Two simplifications:
+
+- No distance histograms and no per-cluster minimality state, so per-state memory
+  drops and batches get bigger.
+- The minimality stage nearly vanishes, removing a kernel path — though the
+  separate `Solver` port was already unnecessary given the gradient-descent
+  result above.
+
+Tier C still dominates and still needs the batched-frontier design. The hardest
+6x6 puzzles live in clusters averaging 3,000–11,000 states, squarely in tiers B
+and C, so the skew handling is not optional even for a top-N run.
+
+### The strategic choice
+
+The measurements do not pick between these; the guarantee you want does.
+
+1. **Provable top-N.** Full sweep of the goal enumeration with the threshold
+   active. No shortcuts beyond the ~2x, because none exist. This is the only
+   route that can claim these *are* the N hardest. On a GPU at 20–50x, plausibly
+   days rather than months.
+2. **N very hard puzzles, no guarantee.** Stochastic search in position space.
+   Difficulty is monotone under adding pieces, which makes hill-climbing
+   well-behaved: grow a board, keep what gets harder. `anneal.go` and
+   `generator.go` already do this. Hours, no GPU, no completeness claim — and for
+   most uses of a puzzle list, indistinguishable from option 1.
+3. **Hybrid.** Anneal first to establish a high `T` cheaply, then sweep with that
+   `T` active to certify it. The sweep costs the same as option 1, but you have a
+   usable list on day one and a proof later.
+
+Option 2 is much cheaper than option 1 and the gap is not closable, so the
+decision is really about whether the word "top" has to be literally true.
+
 ## Methodology
 
 Numbers come from an instrumented copy of `cpp/src` at `claude-performance`,
@@ -375,3 +542,11 @@ to completion, so enumeration timings are exact. Counters added: forward
 expansions and nodes, backward relaxations, recorded edges, per-phase wall time,
 node-count and eccentricity histograms, and a shadow implementation of the
 minimality check for the verification described in Stage 4.
+
+For the top-N section, `Enumerator` gained a goal mode restricting the primary
+row to the single entry with the primary on the target and clearing its
+`Require`, and `Cluster` gained a matching mode that applies the canonicality
+comparison only to states satisfying `IsSolved`. The layout-feature study
+computes piece count, `popcount(Mask())`, the number of vertical pieces in
+columns left of the target, and `Σ log2(maxOffset+1)` before exploring, then
+cross-tabulates each against the cluster's eccentricity.
