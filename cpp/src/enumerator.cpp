@@ -70,6 +70,23 @@ void Enumerator::EnumerateRowCombo(
         return;
     }
 
+    // Half the space goes here, for one comparison. Only rows contribute to the
+    // horizontal mask -- columns hold vertical pieces exclusively -- so `mask` is
+    // already the final HorzMask of every board this combination can produce, and
+    // whether the mirror sorts first is usually settled before the column DFS
+    // runs at all. The exception is a palindromic row combination, whose mirror
+    // has the same horizontal mask; there the ordering comes down to VertMask and
+    // has to be decided per board. Those are rare (41^3 of 41^6 at 7x7, one in
+    // 68,921), so the check below costs nothing in the common case.
+    bool mirrorTie = false;
+    if (DoVertSymmetry) {
+        const bb mirror = ReflectV(mask);
+        if (mirror < mask) {
+            return;
+        }
+        mirrorTie = mirror == mask;
+    }
+
     // A necessary condition, checked in front of the whole column DFS: a
     // required cell can only be covered by a vertical piece, and a vertical
     // piece covering a cell has to extend to the cell above or below it, which
@@ -95,14 +112,23 @@ void Enumerator::EnumerateRowCombo(
             board.AddPiece(piece);
         }
     }
-    PopulateColumn(func, board, 0, mask, require);
+    PopulateColumn(func, board, 0, mask, require, mirrorTie);
 }
 
 void Enumerator::PopulateColumn(
     const EnumeratorFunc &func, Board &board, int x,
-    bb mask, bb require) const
+    bb mask, bb require, const bool mirrorTie) const
 {
     if (x >= BoardSize) {
+        // Only reachable with mirrorTie set on a palindromic row combination, so
+        // the horizontal masks are already known to be equal and the vertical
+        // ones decide it.
+        if (DoVertSymmetry && mirrorTie) {
+            const bb vert = board.VertMask();
+            if (ReflectV(vert) < vert) {
+                return;
+            }
+        }
         func(board);
         return;
     }
@@ -122,7 +148,7 @@ void Enumerator::PopulateColumn(
         }
         PopulateColumn(
             func, board, x + 1,
-            mask | pe.Mask(), require | pe.Require());
+            mask | pe.Mask(), require | pe.Require(), mirrorTie);
         for (int i = 0; i < pe.Pieces().size(); i++) {
             board.PopPiece();
         }

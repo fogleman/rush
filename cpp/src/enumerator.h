@@ -84,9 +84,12 @@ public:
     }
 
 private:
+    // mirrorTie says the row combination is its own vertical mirror, so whether a
+    // board beats its mirror is still undecided and has to be settled on VertMask
+    // once the columns are placed.
     void PopulateColumn(
         const EnumeratorFunc &func, Board &board, int x,
-        bb mask, bb require) const;
+        bb mask, bb require, bool mirrorTie) const;
 
     void ComputeGroups(std::vector<int> &sizes, int sum);
     int GroupForPieces(const std::vector<Piece> &pieces);

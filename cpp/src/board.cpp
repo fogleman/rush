@@ -74,6 +74,46 @@ void Board::PopPiece() {
     m_Pieces.pop_back();
 }
 
+Board Board::Reflected() const {
+    // Piece labels in a board's string follow the order the pieces were added, so
+    // the reflection is rebuilt in the order the enumerator would have used: the
+    // primary piece, then the horizontal pieces by row with the primary row
+    // first, then the vertical ones by column. Pieces keep their line and their
+    // order along it for as long as they live, so this is the order the mirrored
+    // board would have carried had it been enumerated and moved directly.
+    if (m_Pieces.empty()) {
+        return Board();
+    }
+    auto pieces = m_Pieces;
+    for (auto &piece : pieces) {
+        const int y = piece.Position() / BoardSize;
+        const int x = piece.Position() % BoardSize;
+        const int reflected = piece.Stride() == H
+            ? BoardSize - 1 - y
+            : BoardSize - 1 - (y + piece.Size() - 1);
+        piece = Piece(reflected * BoardSize + x, piece.Size(), piece.Stride());
+    }
+    const auto rank = [](const Piece &piece) {
+        const int y = piece.Position() / BoardSize;
+        const int x = piece.Position() % BoardSize;
+        if (piece.Stride() != H) {
+            return std::make_tuple(2, x, y);
+        }
+        return std::make_tuple(y == PrimaryRow ? 0 : 1, y, x);
+    };
+    // the primary piece stays first, wherever it sorts
+    std::stable_sort(pieces.begin() + 1, pieces.end(),
+        [&](const Piece &a, const Piece &b)
+    {
+        return rank(a) < rank(b);
+    });
+    Board board;
+    for (const auto &piece : pieces) {
+        board.AddPiece(piece);
+    }
+    return board;
+}
+
 void Board::RemovePiece(const int i) {
     const auto &piece = m_Pieces[i];
     if (piece.Stride() == H) {
@@ -172,7 +212,7 @@ void Board::Moves(std::vector<Move> &moves) const {
 }
 
 std::string Board::String() const {
-    std::string s(BoardSize2, '.');
+    std::string s(BoardSize2, 'o');
     for (int i = 0; i < m_Pieces.size(); i++) {
         const Piece &piece = m_Pieces[i];
         const char c = piece.Fixed() ? 'x' : 'A' + i;

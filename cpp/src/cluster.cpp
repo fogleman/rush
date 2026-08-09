@@ -243,7 +243,9 @@ void Cluster::Explore(const Board &input) {
     // Forward pass: reach every state in the cluster. If any *goal* state sorts
     // before the input then the input is not this cluster's canonical
     // representative, and whichever goal state is will report the cluster
-    // instead, so there is nothing left to do here.
+    // instead, so there is nothing left to do here. Where vertical symmetry
+    // applies, mirrored goal states join that comparison, so the representative
+    // is chosen once for a cluster and its mirror together.
     //
     // The test is restricted to goal states because the enumeration only emits
     // goal states: the input is one, and the state that would sort below it has
@@ -272,9 +274,26 @@ void Cluster::Explore(const Board &input) {
         const bool canonical = ForEachMove(node,
             [&](const State state, const bb horz, const bb vert)
         {
-            if (IsSolved(state) &&
-                (horz < inputHorz || (horz == inputHorz && vert < inputVert))) {
-                return false;
+            if (IsSolved(state)) {
+                if (horz < inputHorz ||
+                    (horz == inputHorz && vert < inputVert)) {
+                    return false;
+                }
+                // The mirror of this goal state is a goal state of the mirror
+                // cluster, and one representative is wanted for the pair, so it
+                // competes with the input on the same footing. Comparing only the
+                // input against its own mirror -- which the enumerator already
+                // does, and cheaply -- would not be enough: reflection does not
+                // preserve the ordering, so a cluster's smallest goal state and
+                // its mirror's smallest goal state can both beat their own
+                // mirrors, and the pair would be reported twice.
+                if (DoVertSymmetry) {
+                    const bb mirrorHorz = ReflectV(horz);
+                    if (mirrorHorz < inputHorz ||
+                        (mirrorHorz == inputHorz && ReflectV(vert) < inputVert)) {
+                        return false;
+                    }
+                }
             }
             const uint32_t index = Insert(state, horz, vert);
             if (recordEdges) {
@@ -330,6 +349,16 @@ void Cluster::Explore(const Board &input) {
     bb hardestHorz = inputHorz;
     bb hardestVert = inputVert;
 
+    // The same choice, made as the mirror cluster would make it: of the states
+    // furthest from a goal, the one whose reflection sorts first. Reflection
+    // preserves distances, so the mirror cluster's furthest states are exactly the
+    // reflections of these, and this is the one it would have reported. Kept so
+    // that a mirror pair still yields a puzzle whenever either half of it would
+    // have on its own -- see the minimality test below.
+    State mirrorHardest = m_Nodes[0].state;
+    bb mirrorHorz = ReflectV(inputHorz);
+    bb mirrorVert = ReflectV(inputVert);
+
     const auto relax = [&](const uint32_t index, const int32_t distance) {
         Node &neighbor = m_Nodes[index];
         if (neighbor.distance <= distance) {
@@ -343,6 +372,11 @@ void Cluster::Explore(const Board &input) {
             hardest = neighbor.state;
             hardestHorz = neighbor.horz;
             hardestVert = neighbor.vert;
+            if (DoVertSymmetry) {
+                mirrorHardest = neighbor.state;
+                mirrorHorz = ReflectV(neighbor.horz);
+                mirrorVert = ReflectV(neighbor.vert);
+            }
         } else if (distance == m_MaxDistance) {
             if (neighbor.horz < hardestHorz ||
                 (neighbor.horz == hardestHorz && neighbor.vert < hardestVert)) {
@@ -350,6 +384,16 @@ void Cluster::Explore(const Board &input) {
                 hardest = neighbor.state;
                 hardestHorz = neighbor.horz;
                 hardestVert = neighbor.vert;
+            }
+            if (DoVertSymmetry) {
+                const bb horz = ReflectV(neighbor.horz);
+                const bb vert = ReflectV(neighbor.vert);
+                if (horz < mirrorHorz ||
+                    (horz == mirrorHorz && vert < mirrorVert)) {
+                    mirrorHardest = neighbor.state;
+                    mirrorHorz = horz;
+                    mirrorVert = vert;
+                }
             }
         }
     };
@@ -381,11 +425,9 @@ void Cluster::Explore(const Board &input) {
 
     m_Unsolved = ToBoard(hardest);
 
-    // A puzzle is minimal when no piece can be removed without making it
-    // easier. Removing a piece can never increase the distance to a goal --
-    // every existing solution survives -- so "the distance is unchanged" is the
-    // same question as "no shorter solution exists", which is one bounded
-    // search rather than a full iterative-deepening ladder.
+    // A puzzle is minimal when no piece can be removed without making it easier
+    // -- see BoardIsMinimal, which is one bounded search per piece rather than a
+    // full iterative-deepening ladder.
     bool minimal = true;
     if (m_MaxDistance == 0) {
         // Already solved, so removing anything leaves it solved. Minimal only
@@ -422,15 +464,34 @@ void Cluster::Explore(const Board &input) {
             // neighbor one step closer
             assert(found);
         }
-        for (int i = 1; i < m_NumPieces && minimal; i++) {
-            if (m_PieceMoved[i]) {
-                continue;
-            }
-            Board board(m_Unsolved);
-            board.RemovePiece(i);
-            minimal = Reduced().SolvableWithin(board, m_MaxDistance - 1);
+        minimal = BoardIsMinimal(m_Unsolved);
+    }
+
+    // The mirror cluster is not explored -- that is the point of the symmetry --
+    // so the puzzle it would have reported has to be settled here, and minimality
+    // is a property of the one state that gets picked, not of the cluster. Two
+    // states equally far from a goal can disagree about it, and the mirror
+    // cluster's pick is not the reflection of this one, since the tie-break is
+    // lexicographic and reflection does not preserve that order. Falling back to
+    // it keeps a puzzle that the mirror would have reported on its own, which is
+    // what makes the reduction exact rather than merely close: a mirror pair
+    // yields a puzzle whenever either half of it would have.
+    //
+    // The two picks coincide -- and the fallback is skipped -- exactly when the
+    // cluster is its own mirror, so a self-symmetric puzzle is never reported
+    // twice or tested twice.
+    if (DoVertSymmetry && !minimal && m_MaxDistance > 0 &&
+        (mirrorHorz != hardestHorz || mirrorVert != hardestVert)) {
+        const Board board = ToBoard(mirrorHardest).Reflected();
+        // No solution has been walked for this board, so every piece has to be
+        // tested; the descent above only ever skips work, never decides anything.
+        m_PieceMoved.assign(m_NumPieces, false);
+        if (BoardIsMinimal(board)) {
+            m_Unsolved = board;
+            minimal = true;
         }
     }
+
     if (!minimal) {
         return;
     }
@@ -440,6 +501,25 @@ void Cluster::Explore(const Board &input) {
     for (const Node &node : m_Nodes) {
         m_Distances[node.distance]++;
     }
+}
+
+// Removing a piece can never increase the distance to a goal -- every existing
+// solution survives -- so "the distance is unchanged" is the same question as "no
+// shorter solution exists", which is one bounded search per piece. Pieces flagged
+// in m_PieceMoved are skipped, having already been proved non-blocking; clear it
+// to test every piece.
+bool Cluster::BoardIsMinimal(const Board &input) {
+    for (int i = 1; i < m_NumPieces; i++) {
+        if (m_PieceMoved[i]) {
+            continue;
+        }
+        Board board(input);
+        board.RemovePiece(i);
+        if (!Reduced().SolvableWithin(board, m_MaxDistance - 1)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 Cluster &Cluster::Reduced() {

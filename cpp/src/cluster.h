@@ -26,8 +26,10 @@ public:
     bool SolvableWithin(const Board &input, int maxLevels);
 
     // True if the board passed to Explore() was the lexicographically smallest
-    // state in its cluster. When false, exploration stopped early and every
-    // other accessor is meaningless: some other state will report this cluster.
+    // goal state in its cluster -- or, where DoVertSymmetry holds, in the cluster
+    // and its vertical mirror together. When false, exploration stopped early and
+    // every other accessor is meaningless: some other state will report this
+    // cluster.
     bool Canonical() const {
         return m_Canonical;
     }
@@ -136,6 +138,10 @@ private:
     // it has to know which piece each step of a solution moves.
     template <class F>
     bool ForEachPieceMove(const Node &node, int i, F fn) const;
+
+    // True if no piece can be removed from the board without making it easier,
+    // which is what the database means by a minimal puzzle.
+    bool BoardIsMinimal(const Board &input);
 
     void BeginCluster();
     void NewGeneration();

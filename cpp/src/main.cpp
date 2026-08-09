@@ -281,6 +281,7 @@ int main(int argc, char **argv) {
         << ", " << enumerator.NumRowEntries(0) << " row entries"
         << ", " << enumerator.NumColumnEntries(0) << " column entries"
         << ", " << numRowCombos << " row combinations"
+        << (DoVertSymmetry ? ", vertical symmetry" : "")
         << ", chunk " << opts.chunkSize
         << ", shard " << opts.shard << "/" << opts.numShards
         << ", " << opts.numWorkers << " workers"

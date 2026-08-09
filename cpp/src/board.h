@@ -42,6 +42,11 @@ public:
         return m_Pieces[0].Position() == Target;
     }
 
+    // The board reflected top to bottom. A symmetry of the puzzle only where
+    // DoVertSymmetry holds, which is where every caller uses it: elsewhere the
+    // reflection moves the primary row and the result is a different puzzle.
+    Board Reflected() const;
+
     void AddPiece(const Piece &piece);
     void PopPiece();
     void RemovePiece(const int i);
