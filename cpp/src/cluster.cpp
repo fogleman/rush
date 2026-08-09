@@ -349,16 +349,6 @@ void Cluster::Explore(const Board &input) {
     bb hardestHorz = inputHorz;
     bb hardestVert = inputVert;
 
-    // The same choice, made as the mirror cluster would make it: of the states
-    // furthest from a goal, the one whose reflection sorts first. Reflection
-    // preserves distances, so the mirror cluster's furthest states are exactly the
-    // reflections of these, and this is the one it would have reported. Kept so
-    // that a mirror pair still yields a puzzle whenever either half of it would
-    // have on its own -- see the minimality test below.
-    State mirrorHardest = m_Nodes[0].state;
-    bb mirrorHorz = ReflectV(inputHorz);
-    bb mirrorVert = ReflectV(inputVert);
-
     const auto relax = [&](const uint32_t index, const int32_t distance) {
         Node &neighbor = m_Nodes[index];
         if (neighbor.distance <= distance) {
@@ -372,11 +362,6 @@ void Cluster::Explore(const Board &input) {
             hardest = neighbor.state;
             hardestHorz = neighbor.horz;
             hardestVert = neighbor.vert;
-            if (DoVertSymmetry) {
-                mirrorHardest = neighbor.state;
-                mirrorHorz = ReflectV(neighbor.horz);
-                mirrorVert = ReflectV(neighbor.vert);
-            }
         } else if (distance == m_MaxDistance) {
             if (neighbor.horz < hardestHorz ||
                 (neighbor.horz == hardestHorz && neighbor.vert < hardestVert)) {
@@ -384,16 +369,6 @@ void Cluster::Explore(const Board &input) {
                 hardest = neighbor.state;
                 hardestHorz = neighbor.horz;
                 hardestVert = neighbor.vert;
-            }
-            if (DoVertSymmetry) {
-                const bb horz = ReflectV(neighbor.horz);
-                const bb vert = ReflectV(neighbor.vert);
-                if (horz < mirrorHorz ||
-                    (horz == mirrorHorz && vert < mirrorVert)) {
-                    mirrorHardest = neighbor.state;
-                    mirrorHorz = horz;
-                    mirrorVert = vert;
-                }
             }
         }
     };
@@ -477,18 +452,44 @@ void Cluster::Explore(const Board &input) {
     // what makes the reduction exact rather than merely close: a mirror pair
     // yields a puzzle whenever either half of it would have.
     //
-    // The two picks coincide -- and the fallback is skipped -- exactly when the
+    // The two picks coincide -- and the fallback does nothing -- exactly when the
     // cluster is its own mirror, so a self-symmetric puzzle is never reported
     // twice or tested twice.
-    if (DoVertSymmetry && !minimal && m_MaxDistance > 0 &&
-        (mirrorHorz != hardestHorz || mirrorVert != hardestVert)) {
-        const Board board = ToBoard(mirrorHardest).Reflected();
-        // No solution has been walked for this board, so every piece has to be
-        // tested; the descent above only ever skips work, never decides anything.
-        m_PieceMoved.assign(m_NumPieces, false);
-        if (BoardIsMinimal(board)) {
-            m_Unsolved = board;
-            minimal = true;
+    if (DoVertSymmetry && !minimal && m_MaxDistance > 0) {
+        // What the mirror cluster would have picked: of the states furthest from a
+        // goal, the one whose reflection sorts first. Reflection preserves
+        // distances, so the mirror's furthest states are exactly the reflections
+        // of these. Found in one pass over the nodes, here on the fallback path
+        // rather than tracked during the backward pass, where it would have cost
+        // two reflections for every relaxed node to serve the rare case that needs
+        // it -- and the pass costs nothing next to the searches below.
+        const Node *pick = nullptr;
+        bb pickHorz = 0;
+        bb pickVert = 0;
+        for (const Node &node : m_Nodes) {
+            if (node.distance != m_MaxDistance) {
+                continue;
+            }
+            const bb horz = ReflectV(node.horz);
+            const bb vert = ReflectV(node.vert);
+            if (pick == nullptr || horz < pickHorz ||
+                (horz == pickHorz && vert < pickVert)) {
+                pick = &node;
+                pickHorz = horz;
+                pickVert = vert;
+            }
+        }
+        assert(pick != nullptr);
+        if (pickHorz != hardestHorz || pickVert != hardestVert) {
+            const Board board = ToBoard(pick->state).Reflected();
+            // No solution has been walked for this board, so every piece has to
+            // be tested; the descent above only ever skips work, it never decides
+            // anything.
+            m_PieceMoved.assign(m_NumPieces, false);
+            if (BoardIsMinimal(board)) {
+                m_Unsolved = board;
+                minimal = true;
+            }
         }
     }
 

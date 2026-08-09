@@ -7,7 +7,6 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
-#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -24,19 +23,11 @@ using namespace std::chrono;
 namespace {
 
 struct Options {
-    // Shard S of N takes every Nth chunk of the row-combination space, so a run
-    // can be spread over machines that never talk to each other. Every shard
-    // must use the same --chunk, or the shards do not partition the space.
+    // Shard S of N takes a 1/N sample of the row-combination space, so a run can
+    // be spread over machines that never talk to each other. The shards partition
+    // the space exactly, and each one samples all of it -- see Scramble.
     uint64_t shard = 0;
     uint64_t numShards = 1;
-    // Row combinations per unit of work. Zero picks a default from the size of
-    // the space, which is a property of the board and so is the same on every
-    // machine.
-    uint64_t chunkSize = 0;
-    // Sweep position, so a long run can be stopped and resumed: pass the resume
-    // value from the last progress line back in.
-    uint64_t resume = 0;
-    uint64_t limit = 0;
     int numWorkers = NumWorkers;
 };
 
@@ -44,9 +35,6 @@ void Usage() {
     cerr <<
         "usage: main [options]\n"
         "  --shard S/N   process only shard S of N (default 0/1)\n"
-        "  --chunk C     row combinations per unit of work\n"
-        "  --resume C    start at row combination C\n"
-        "  --limit N     stop this many row combinations after --resume\n"
         "  --workers W   worker threads (default NumWorkers from config.h)\n";
     exit(1);
 }
@@ -63,12 +51,6 @@ Options Parse(const int argc, char **argv) {
                 o.numShards == 0 || o.shard >= o.numShards) {
                 Usage();
             }
-        } else if (arg == "--chunk" && next) {
-            o.chunkSize = strtoull(argv[++i], nullptr, 10);
-        } else if (arg == "--resume" && next) {
-            o.resume = strtoull(argv[++i], nullptr, 10);
-        } else if (arg == "--limit" && next) {
-            o.limit = strtoull(argv[++i], nullptr, 10);
         } else if (arg == "--workers" && next) {
             o.numWorkers = atoi(argv[++i]);
         } else {
@@ -117,117 +99,134 @@ Totals sum(const std::vector<Counts> &counts) {
     return totals;
 }
 
-// Hands out chunks of the row-combination space.
+// A fixed permutation of the row-combination space, so the sweep visits it in a
+// scattered order instead of front to back.
 //
-// A chunk is a range of combination indexes and nothing more, because rows never
-// conflict with one another: the space is a plain odometer, so where a chunk
-// starts needs no enumeration to find. That is what makes the sweep resumable
-// and shardable across machines.
+// Cost per combination varies by more than 65x, and the expensive combinations
+// are not spread evenly through the index space. A row's entry index 0 is the
+// empty row, and row BoardSize-1 is the odometer's most significant digit, so the
+// emptiest boards -- the largest clusters, the longest solutions, the most
+// positions per combination -- all sit at the very start. Swept front to back, a
+// run spends its first hours in the most expensive corner and every rate it
+// reports is wrong by more than an order of magnitude. Permuted, any prefix of a
+// shard is a uniform sample of the whole space, so the projection is meaningful
+// within minutes -- and so is anything else measured from a partial run.
 //
-// Chunks are interleaved -- shard S takes every Nth one -- rather than split
-// into contiguous ranges. Measured cost per row combination varies by more than
-// 65x across the space, so contiguous ranges give wildly unbalanced shards;
-// interleaving averages it out. Workers inside a process take the next chunk
-// going, which balances them for the same reason.
-class Sweep {
+// Cycle walking over a bit mixer: iterating a bijection on the smallest power of
+// two that covers the space, until the value lands back inside the space, is
+// itself a bijection on the space, and takes 2^bits / size iterations on average
+// (1.8 at 7x7). Every step -- multiply by an odd constant, xor a right shift -- is
+// invertible modulo 2^bits, so the mixer is. Fixed constants and 64-bit
+// arithmetic, so every machine walks the same order.
+class Scramble {
 public:
-    Sweep(const Options &opts, const uint64_t numRowCombos) :
-        m_ChunkSize(opts.chunkSize),
-        m_Shard(opts.shard),
-        m_NumShards(opts.numShards),
-        m_First(std::min(opts.resume, numRowCombos)),
-        m_Last(opts.limit > 0
-            ? std::min(opts.resume + opts.limit, numRowCombos)
-            : numRowCombos)
-    {
-        // The first chunk of this shard at or after the resume point. Ownership
-        // is a property of the chunk index alone, so a resumed run picks up
-        // exactly the chunks it would have reached.
-        const uint64_t firstChunk = m_First / m_ChunkSize;
-        m_BaseChunk = firstChunk +
-            (m_NumShards + m_Shard - firstChunk % m_NumShards) % m_NumShards;
-        if (m_Last > 0) {
-            const uint64_t lastChunk = (m_Last - 1) / m_ChunkSize;
-            if (lastChunk >= m_BaseChunk) {
-                m_NumChunks = (lastChunk - m_BaseChunk) / m_NumShards + 1;
-            }
+    explicit Scramble(const uint64_t size) : m_Size(size) {
+        while (m_Bits < 64 && ((uint64_t)1 << m_Bits) < size) {
+            m_Bits++;
         }
+        m_Mask = m_Bits >= 64 ? ~(uint64_t)0 : (((uint64_t)1 << m_Bits) - 1);
+        // a shift of zero would collapse the xor step, and with it the bijection
+        m_ShiftA = std::max(1, m_Bits / 2);
+        m_ShiftB = std::max(1, m_Bits / 3);
     }
 
-    // Claims the next chunk, as the combination range [begin, end).
-    bool Next(uint64_t &ordinal, uint64_t &begin, uint64_t &end) {
-        const uint64_t k = m_Next.fetch_add(1, std::memory_order_relaxed);
-        const uint64_t chunk = ChunkOf(k);
-        const uint64_t from = std::max(m_First, chunk * m_ChunkSize);
-        if (from >= m_Last) {
-            return false;
-        }
-        ordinal = k;
-        begin = from;
-        end = std::min(m_Last, (chunk + 1) * m_ChunkSize);
-        lock_guard<mutex> lock(m_Mutex);
-        m_InFlight.insert(k);
-        return true;
-    }
-
-    void Finish(const uint64_t ordinal) {
-        lock_guard<mutex> lock(m_Mutex);
-        m_InFlight.erase(ordinal);
-        m_Finished++;
-    }
-
-    // The combination to pass back as --resume. Every chunk this shard owns
-    // below it is finished, so resuming there loses at most the chunks still in
-    // flight and misses nothing. It is deliberately conservative: one expensive
-    // chunk holds the cursor back however far the other workers have run ahead,
-    // which is why coverage is reported separately.
-    uint64_t Cursor() const {
-        lock_guard<mutex> lock(m_Mutex);
-        const uint64_t k = m_InFlight.empty()
-            ? m_Next.load(std::memory_order_relaxed)
-            : *m_InFlight.begin();
-        return std::min(m_Last, std::max(m_First, ChunkOf(k) * m_ChunkSize));
-    }
-
-    // Fraction of this shard's chunks that are finished. Counted rather than
-    // derived from the cursor: cost per chunk varies by more than an order of
-    // magnitude, so workers finish far out of order and the cursor is a poor
-    // measure of how much is done.
-    double Fraction() const {
-        if (m_NumChunks == 0) {
-            return 1;
-        }
-        lock_guard<mutex> lock(m_Mutex);
-        return (double)m_Finished / (double)m_NumChunks;
+    uint64_t operator()(uint64_t i) const {
+        do {
+            // Offset before mixing, because zero is a fixed point of multiplies
+            // and shifts alike, and combination zero -- every row empty -- is the
+            // most expensive one there is. It belongs inside the loop: cycle
+            // walking is only a bijection while the walk starts inside the space,
+            // and offsetting beforehand would start it anywhere, letting two
+            // indexes reach the same combination.
+            i = (i + 0x2545f4914f6cdd1dULL) & m_Mask;
+            i = (i * 0x9e3779b97f4a7c15ULL) & m_Mask;
+            i ^= i >> m_ShiftA;
+            i = (i * 0xbf58476d1ce4e5b9ULL) & m_Mask;
+            i ^= i >> m_ShiftB;
+            i = (i * 0x94d049bb133111ebULL) & m_Mask;
+        } while (i >= m_Size);
+        return i;
     }
 
 private:
-    uint64_t ChunkOf(const uint64_t ordinal) const {
-        return m_BaseChunk + ordinal * m_NumShards;
+    uint64_t m_Size;
+    int m_Bits = 0;
+    uint64_t m_Mask = 0;
+    int m_ShiftA = 1;
+    int m_ShiftB = 1;
+};
+
+// Hands out work indexes. Index k means the combination Scramble(k), so a
+// contiguous range of indexes is a scattered sample of the board space.
+//
+// Shard S of N owns the index range [S*size/N, (S+1)*size/N). The ranges tile the
+// index space and the permutation is a bijection, so the shards cover every
+// combination exactly once -- while each one still samples the whole space, which
+// is what a contiguous range of raw combination indexes could never do.
+//
+// Workers claim a batch at a time purely to keep the counter off the critical
+// path: half of all combinations are now retired by the vertical-symmetry check
+// in a few hundred cycles, which is not much more than a contended atomic. Unlike
+// a chunk size, the batch does not affect which combinations a shard covers, so
+// shards need not agree on it.
+class Sweep {
+public:
+    static const uint64_t BatchSize = 256;
+
+    Sweep(const Options &opts, const uint64_t numRowCombos) :
+        m_First(Split(numRowCombos, opts.shard, opts.numShards)),
+        m_Last(Split(numRowCombos, opts.shard + 1, opts.numShards)),
+        m_Next(m_First)
+    {
     }
 
-    const uint64_t m_ChunkSize;
-    const uint64_t m_Shard;
-    const uint64_t m_NumShards;
+    // Claims the next batch, as the index range [begin, end).
+    bool Next(uint64_t &begin, uint64_t &end) {
+        begin = m_Next.fetch_add(BatchSize, std::memory_order_relaxed);
+        if (begin >= m_Last) {
+            return false;
+        }
+        end = std::min(m_Last, begin + BatchSize);
+        return true;
+    }
+
+    void Finish(const uint64_t count) {
+        m_Done.fetch_add(count, std::memory_order_relaxed);
+    }
+
+    // Fraction of this shard's combinations that are finished. An unbiased
+    // estimate of the fraction of its *work* that is finished, since the
+    // permutation makes what has been visited a uniform sample.
+    double Fraction() const {
+        if (m_Last <= m_First) {
+            return 1;
+        }
+        return (double)m_Done.load(std::memory_order_relaxed) /
+            (double)(m_Last - m_First);
+    }
+
+private:
+    // The i'th of n boundaries in [0, size], i.e. floor(size * i / n) without
+    // overflowing on the product. Consecutive boundaries tile the index space, so
+    // shards fit together exactly whatever n is.
+    static uint64_t Split(
+        const uint64_t size, const uint64_t i, const uint64_t n)
+    {
+        return size / n * i + size % n * i / n;
+    }
+
     const uint64_t m_First;
     const uint64_t m_Last;
-    uint64_t m_BaseChunk = 0;
-    uint64_t m_NumChunks = 0;
-
-    std::atomic<uint64_t> m_Next{0};
-    mutable mutex m_Mutex;
-    uint64_t m_Finished = 0;
-    // Chunks claimed but not yet finished. The smallest of them is what bounds
-    // the resume cursor: chunks above it may already be done, but a resumed run
-    // has to start somewhere it can prove nothing was missed.
-    std::set<uint64_t> m_InFlight;
+    std::atomic<uint64_t> m_Next;
+    std::atomic<uint64_t> m_Done{0};
 };
 
 typedef std::function<void(const Cluster &)> ReportFunc;
 typedef std::function<void()> ProgressFunc;
 
 void worker(
-    Sweep &sweep, Counts &counts, const Enumerator &enumerator,
+    Sweep &sweep, const Scramble &scramble, Counts &counts,
+    const Enumerator &enumerator,
     const ReportFunc &report, const ProgressFunc &progress)
 {
     // reused across clusters: its arena and hash table are the expensive part
@@ -246,14 +245,13 @@ void worker(
         report(cluster);
     };
 
-    uint64_t ordinal = 0;
     uint64_t begin = 0;
     uint64_t end = 0;
-    while (sweep.Next(ordinal, begin, end)) {
-        for (uint64_t combo = begin; combo < end; combo++) {
-            enumerator.EnumerateRowCombo(combo, onPosition);
+    while (sweep.Next(begin, end)) {
+        for (uint64_t i = begin; i < end; i++) {
+            enumerator.EnumerateRowCombo(scramble(i), onPosition);
         }
-        sweep.Finish(ordinal);
+        sweep.Finish(end - begin);
         progress();
     }
 }
@@ -265,14 +263,6 @@ int main(int argc, char **argv) {
 
     const Enumerator enumerator;
     const uint64_t numRowCombos = enumerator.NumRowCombos();
-    if (opts.chunkSize == 0) {
-        // Small enough that the expensive stretches of the space get spread over
-        // the workers and a stopped run loses little, large enough that the
-        // bookkeeping disappears. Derived from the board alone, so every shard
-        // agrees on the chunk grid without being told what it is.
-        opts.chunkSize =
-            std::max<uint64_t>(1, std::min<uint64_t>(1 << 16, numRowCombos >> 14));
-    }
 
     cerr
         << BoardSize << "x" << BoardSize
@@ -282,16 +272,18 @@ int main(int argc, char **argv) {
         << ", " << enumerator.NumColumnEntries(0) << " column entries"
         << ", " << numRowCombos << " row combinations"
         << (DoVertSymmetry ? ", vertical symmetry" : "")
-        << ", chunk " << opts.chunkSize
         << ", shard " << opts.shard << "/" << opts.numShards
         << ", " << opts.numWorkers << " workers"
         << endl;
 
+    const Scramble scramble(numRowCombos);
     Sweep sweep(opts, numRowCombos);
     std::vector<Counts> counts(opts.numWorkers);
     mutex m;
     const auto start = steady_clock::now();
-    double lastReport = 0;
+    // Read outside the output lock by every finished batch, so it cannot just be
+    // a double.
+    std::atomic<double> lastReport{0};
 
     // Both of these hold the output lock, so they also serialize the progress
     // line against the puzzle being printed.
@@ -306,7 +298,6 @@ int main(int argc, char **argv) {
             << pct << " pct "
             << hrs << " hrs "
             << (pct > 0 ? hrs / pct : 0) << " est - "
-            << "resume " << sweep.Cursor() << " - "
             << totals.in << " inp "
             << totals.canonical << " can "
             << totals.solvable << " slv "
@@ -333,14 +324,24 @@ int main(int argc, char **argv) {
         printProgress();
     };
 
-    // Called once per finished chunk. With a move threshold puzzles are rare
+    // Called once per finished batch. With a move threshold puzzles are rare
     // enough that reporting only when one turns up leaves a run silent for
     // hours, so progress also goes out on elapsed time.
+    //
+    // The clock is read before the lock is taken, because a batch of the cheapest
+    // combinations -- the ones vertical symmetry retires outright -- takes only
+    // microseconds, and every worker calls this at the end of every batch. Taking
+    // the output lock each time would serialize them on it. The unlocked read can
+    // be stale, which only costs a redundant lock, and the check is repeated
+    // underneath.
     const ProgressFunc progress = [&]() {
-        lock_guard<mutex> lock(m);
         const double hrs =
             duration<double>(steady_clock::now() - start).count() / 3600;
-        if (hrs - lastReport >= 30.0 / 3600) {
+        if (hrs - lastReport.load(std::memory_order_relaxed) < 30.0 / 3600) {
+            return;
+        }
+        lock_guard<mutex> lock(m);
+        if (hrs - lastReport.load(std::memory_order_relaxed) >= 30.0 / 3600) {
             printProgress();
         }
     };
@@ -348,8 +349,8 @@ int main(int argc, char **argv) {
     std::vector<std::thread> threads;
     for (int wi = 0; wi < opts.numWorkers; wi++) {
         threads.push_back(std::thread(
-            worker, std::ref(sweep), std::ref(counts[wi]), std::cref(enumerator),
-            std::cref(report), std::cref(progress)));
+            worker, std::ref(sweep), std::cref(scramble), std::ref(counts[wi]),
+            std::cref(enumerator), std::cref(report), std::cref(progress)));
     }
     for (std::thread &thread : threads) {
         thread.join();
