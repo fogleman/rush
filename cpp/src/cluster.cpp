@@ -8,14 +8,18 @@ namespace {
 
 const int32_t UnknownDistance = std::numeric_limits<int32_t>::max();
 
-// The table is grow-only and shared by every cluster this instance explores.
+// The table grows within a cluster and is shared by every cluster this instance
+// explores.
 //
-// Restarting it small per cluster looks appealing, since cluster sizes are
-// wildly skewed and most are tiny, but it measures slower at both 5x5 and 6x6:
-// the skew cuts the other way. Growing back up rehashes every node already
-// inserted, and that cost lands on the big clusters, which is where most of the
-// states are -- at 6x6 one percent of clusters hold forty percent of the states.
-// Sizing from the previous cluster's node count does not rescue it either.
+// Restarting it small for *every* cluster measures slower at both 5x5 and 6x6,
+// and the reason is worth keeping: cluster sizes are wildly skewed, but the skew
+// cuts the other way round from the intuition. Growing back up rehashes every
+// node already inserted, and that cost lands on the big clusters, which is where
+// most of the states are -- at 6x6 one percent of clusters hold forty percent of
+// them. Sizing from the previous cluster's node count does not rescue it either.
+//
+// Never coming back down is not the answer either, though: see Trim, which
+// resizes on a much longer period than one cluster.
 const size_t InitialTableSize = 4096;
 
 // Ceiling on recorded adjacency, so one enormous cluster cannot balloon a
@@ -153,14 +157,75 @@ void Cluster::NewGeneration() {
 }
 
 void Cluster::BeginCluster() {
+    m_PeakNodes = std::max(m_PeakNodes, m_Nodes.size());
     m_Nodes.clear();
     m_Edges.clear();
     m_EdgeStart.clear();
     m_HaveEdges = true;
+    if (++m_ClustersSinceTrim >= TrimInterval) {
+        Trim();
+    }
     NewGeneration();
     if (m_Table.empty()) {
         GrowTable();
     }
+}
+
+// Releases buffer capacity that recent clusters have not needed.
+//
+// Without this the buffers only ever grow, so a worker ends up sized for the
+// largest cluster it has ever met and stays there: one 10M-state cluster costs it
+// about 670MB, and there are two instances per worker. Visiting the space in
+// scrambled order makes that the normal case rather than a rarity -- front to
+// back, a worker's consecutive clusters were similar in size and most workers
+// never met the tail of the distribution at all, whereas scrambled, every worker
+// meets it within minutes.
+//
+// What that costs is easy to underestimate from a short benchmark. Measured on one
+// worker over a few thousand combinations, trimming is about 3% *slower*: the
+// sample is dominated by a handful of enormous clusters, where a big table is
+// exactly right, and the small clusters that benefit contribute little of the
+// work. Measured on a full run it is the difference between working and not. Eight
+// workers on a 16GB machine drove 5.4GB of swap and eight billion page
+// decompressions, and the process sat at 391% CPU out of a possible 800 -- half
+// the cores blocked on memory, because a probe into a multi-gigabyte table lands
+// on a random page and a swapped-out table faults on nearly every probe. Per
+// combination, cost then grows with how long the shard has been running, which is
+// how the ratchet shows up in a progress line.
+//
+// Sized to the largest cluster since the last trim rather than to the last one, so
+// a run of big clusters pays for growth once instead of once apiece, and only when
+// clearly oversized, so a steady state does not reallocate on every trim. A
+// cluster that outgrows the trimmed size just grows again, which is amortized.
+void Cluster::Trim() {
+    m_ClustersSinceTrim = 0;
+    const size_t peak = m_PeakNodes;
+    m_PeakNodes = 0;
+
+    size_t size = InitialTableSize;
+    while (TableIsFull(peak, size)) {
+        size *= 2;
+    }
+    if (size * 2 <= m_Table.size()) {
+        // assign zeroes the buffer, which retires every entry already in it
+        m_Table.assign(size, 0);
+        m_TableMask = size - 1;
+    }
+
+    // Reserved rather than left to grow from nothing: the arenas are filled by
+    // push_back, and a cluster that starts from zero capacity copies its way up
+    // through every doubling.
+    const size_t nodes = std::max(peak, InitialTableSize * 3 / 4);
+    if (m_Nodes.capacity() > nodes * 2) {
+        std::vector<Node>().swap(m_Nodes);
+        m_Nodes.reserve(nodes);
+        std::vector<uint32_t>().swap(m_EdgeStart);
+        m_EdgeStart.reserve(nodes + 1);
+        std::vector<uint32_t>().swap(m_Queue);
+        m_Queue.reserve(nodes);
+    }
+    // m_Edges is left alone: MaxEdges already bounds it, and releasing it would
+    // only make the next large cluster copy its way back up to the same ceiling.
 }
 
 void Cluster::GrowTable() {

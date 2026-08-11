@@ -146,6 +146,8 @@ private:
     void BeginCluster();
     void NewGeneration();
     void GrowTable();
+    // Releases buffer capacity that recent clusters have not needed.
+    void Trim();
     // Returns the state's node index, inserting it if it is new.
     uint32_t Insert(const State state, const bb horz, const bb vert);
     uint32_t Find(const State state) const;
@@ -159,6 +161,14 @@ private:
     std::vector<bool> m_PieceMoved;
     uint64_t m_TableMask = 0;
     uint32_t m_Generation = 0;
+
+    // Largest cluster seen since the last trim, and how many clusters ago that
+    // was. See Trim: the buffers are grow-only within a cluster, which is right
+    // for one cluster and wrong across many, so they are periodically resized to
+    // what the clusters actually arriving need.
+    static const int TrimInterval = 256;
+    size_t m_PeakNodes = 0;
+    int m_ClustersSinceTrim = 0;
 
     // A second instance, used only for the bounded reachability searches the
     // minimality test needs. It runs the same machinery -- piece info, packed
