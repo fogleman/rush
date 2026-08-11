@@ -567,6 +567,18 @@ func (board *Board) UnsafeUnsolve() (*Board, Solution) {
 	return NewUnsolver(board).UnsafeUnsolve()
 }
 
+func (board *Board) Humanize(moves []Move) []Move {
+	return humanize(board, moves)
+}
+
+func (board *Board) MoveStretch(moves []Move) int {
+	return moveStretch(board, moves)
+}
+
+func (board *Board) ValidateSolution(moves []Move) error {
+	return validateSolution(board, moves)
+}
+
 func (board *Board) Render() image.Image {
 	return renderBoard(board)
 }
